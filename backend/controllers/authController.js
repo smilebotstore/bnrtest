@@ -100,7 +100,7 @@ class AuthController {
                 }
             );
 
-            // Discord Audit Webhook Notification (Plain Text)
+            // Discord Audit Webhook Notification (Plain Text, Waktu WIB)
             discordService.sendAuditLoginLog({
                 username: user.username,
                 name: user.name,
@@ -108,9 +108,7 @@ class AuthController {
                 accountNumber: user.accountNumber,
                 ip: clientInfo.ip,
                 browser: clientInfo.browser,
-                os: clientInfo.os,
-                timezone: clientInfo.timezone,
-                loginTime: clientInfo.loginTime
+                os: clientInfo.os
             }).catch(e => console.error('[Discord Webhook Error]', e));
 
             return res.json({
@@ -155,7 +153,7 @@ class AuthController {
                     }
                 );
 
-                // Discord Audit Webhook Notification (Plain Text)
+                // Discord Audit Webhook Notification (Plain Text, Waktu WIB)
                 discordService.sendAuditLogoutLog({
                     username,
                     name: user.name,
@@ -163,9 +161,7 @@ class AuthController {
                     accountNumber: user.accountNumber,
                     ip: clientInfo.ip,
                     browser: clientInfo.browser,
-                    os: clientInfo.os,
-                    timezone: clientInfo.timezone,
-                    logoutTime: clientInfo.loginTime
+                    os: clientInfo.os
                 }).catch(e => console.error('[Discord Webhook Error]', e));
             }
 

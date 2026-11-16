@@ -68,29 +68,12 @@ function parseClientInfo(req, bodyTimezone) {
         browser = `Safari ${match ? match[1].split('.')[0] : ''}`.trim();
     }
 
-    // 3. Timezone
-    let timezone = bodyTimezone || 'Asia/Jakarta (WIB)';
-    if (!timezone.includes('(')) {
-        if (timezone === 'Asia/Jakarta') timezone = 'Asia/Jakarta (WIB)';
-        else if (timezone === 'Asia/Makassar') timezone = 'Asia/Makassar (WITA)';
-        else if (timezone === 'Asia/Jayapura') timezone = 'Asia/Jayapura (WIT)';
-        else timezone = `${timezone} (UTC${-new Date().getTimezoneOffset() / 60 >= 0 ? '+' : ''}${-new Date().getTimezoneOffset() / 60})`;
-    }
+    // 3. Timezone (Selalu menggunakan Waktu Indonesia Barat / WIB)
+    const timezone = 'Asia/Jakarta (WIB)';
 
-    // 4. Formatted Date & Time in Western Indonesian Time (WIB) or client time
+    // 4. Formatted Date & Time dalam format persis seperti transaction log BNR (WIB)
     const now = new Date();
-    const formatter = new Intl.DateTimeFormat('id-ID', {
-        dateStyle: 'full',
-        timeStyle: 'medium',
-        timeZone: timezone.split(' ')[0] || 'Asia/Jakarta'
-    });
-    
-    let formattedDate = '';
-    try {
-        formattedDate = formatter.format(now);
-    } catch {
-        formattedDate = now.toLocaleString('id-ID');
-    }
+    const formattedDate = `${now.toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' })} WIB`;
 
     return {
         ip,

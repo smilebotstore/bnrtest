@@ -22,9 +22,10 @@ class DiscordService {
             return accNo.substring(0, 3) + '••••' + accNo.substring(7);
         };
 
-        // Format asli persis dari script.js BNR
+        // Format asli persis dari script.js BNR (Waktu WIB)
+        const waktuWIB = `${new Date().toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' })} WIB`;
         const payload = {
-            content: `**BNR | TRANSACTION LOG**\n\`\`\`BNR | TRANSFER BERHASIL\n\nPengirim: ${senderName}\nRekening: ${maskAccount(senderAccount)}\n\nPenerima: ${receiverName}\nRekening: ${maskAccount(receiverAccount)}\n\nNominal: ${formatCurrency(amount)}\nTransaction ID: ${txId}\nWaktu: ${new Date().toLocaleString('id-ID')} WIB\`\`\``
+            content: `**BNR | TRANSACTION LOG**\n\`\`\`BNR | TRANSFER BERHASIL\n\nPengirim: ${senderName}\nRekening: ${maskAccount(senderAccount)}\n\nPenerima: ${receiverName}\nRekening: ${maskAccount(receiverAccount)}\n\nNominal: ${formatCurrency(amount)}\nTransaction ID: ${txId}\nWaktu: ${waktuWIB}\`\`\``
         };
 
         try {
@@ -38,15 +39,16 @@ class DiscordService {
         }
     }
 
-    // 2. Audit Webhook - Login Detection (Plain Text Format)
-    async sendAuditLoginLog({ username, name, role, accountNumber, ip, browser, os, timezone, loginTime }) {
+    // 2. Audit Webhook - Login Detection (Plain Text Format, Waktu WIB)
+    async sendAuditLoginLog({ username, name, role, accountNumber, ip, browser, os }) {
         const auditWebhookUrl = config.discord.auditWebhookUrl;
         if (!auditWebhookUrl || auditWebhookUrl.includes('YOUR_DISCORD_WEBHOOK_URL')) {
             return;
         }
 
+        const waktuWIB = `${new Date().toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' })} WIB`;
         const payload = {
-            content: `**BNR | AUDIT LOG - LOGIN DETECTED**\n\`\`\`BNR | AUTENTIKASI PENGGUNA\n\nUsername: @${username}\nNama: ${name || '-'}\nRole: ${role || 'CUSTOMER'}\nRekening: ${accountNumber || '-'}\n\nIP Address: ${ip || '127.0.0.1'}\nBrowser: ${browser || 'Unknown'}\nOperating System: ${os || 'Unknown'}\nTimezone: ${timezone || 'Asia/Jakarta (WIB)'}\nWaktu: ${loginTime}\`\`\``
+            content: `**BNR | AUDIT LOG - LOGIN DETECTED**\n\`\`\`BNR | AUTENTIKASI PENGGUNA\n\nUsername: @${username}\nNama: ${name || '-'}\nRole: ${role || 'CUSTOMER'}\nRekening: ${accountNumber || '-'}\n\nIP Address: ${ip || '127.0.0.1'}\nBrowser: ${browser || 'Unknown'}\nOperating System: ${os || 'Unknown'}\nTimezone: Asia/Jakarta (WIB)\nWaktu: ${waktuWIB}\`\`\``
         };
 
         try {
@@ -60,15 +62,16 @@ class DiscordService {
         }
     }
 
-    // 3. Audit Webhook - Logout Detection (Plain Text Format)
-    async sendAuditLogoutLog({ username, name, role, accountNumber, ip, browser, os, timezone, logoutTime }) {
+    // 3. Audit Webhook - Logout Detection (Plain Text Format, Waktu WIB)
+    async sendAuditLogoutLog({ username, name, role, accountNumber, ip, browser, os }) {
         const auditWebhookUrl = config.discord.auditWebhookUrl;
         if (!auditWebhookUrl || auditWebhookUrl.includes('YOUR_DISCORD_WEBHOOK_URL')) {
             return;
         }
 
+        const waktuWIB = `${new Date().toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' })} WIB`;
         const payload = {
-            content: `**BNR | AUDIT LOG - LOGOUT DETECTED**\n\`\`\`BNR | PENGGUNA KELUAR SISTEM\n\nUsername: @${username}\nNama: ${name || '-'}\nRole: ${role || 'CUSTOMER'}\nRekening: ${accountNumber || '-'}\n\nIP Address: ${ip || '127.0.0.1'}\nBrowser: ${browser || 'Unknown'}\nOperating System: ${os || 'Unknown'}\nTimezone: ${timezone || 'Asia/Jakarta (WIB)'}\nWaktu: ${logoutTime}\`\`\``
+            content: `**BNR | AUDIT LOG - LOGOUT DETECTED**\n\`\`\`BNR | PENGGUNA KELUAR SISTEM\n\nUsername: @${username}\nNama: ${name || '-'}\nRole: ${role || 'CUSTOMER'}\nRekening: ${accountNumber || '-'}\n\nIP Address: ${ip || '127.0.0.1'}\nBrowser: ${browser || 'Unknown'}\nOperating System: ${os || 'Unknown'}\nTimezone: Asia/Jakarta (WIB)\nWaktu: ${waktuWIB}\`\`\``
         };
 
         try {

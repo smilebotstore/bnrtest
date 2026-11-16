@@ -1305,8 +1305,8 @@ async function renderAdminLogs() {
             <div class="space-y-3">
                 ${logs.map(l => {
                     const isLogin = l.action === 'USER_LOGIN' || l.action === 'LOGIN';
-                    const timeStr = l.loginTime || new Date(l.timestamp).toLocaleString('id-ID');
-                    const tzStr = l.timezone || 'Asia/Jakarta (WIB)';
+                    const timeStr = l.loginTime || `${new Date(l.timestamp).toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' })} WIB`;
+                    const tzStr = 'Asia/Jakarta (WIB)';
                     const ipStr = l.ip || '-';
                     const deviceStr = l.browser ? `${l.browser} &bull; ${l.os || 'Unknown OS'}` : '-';
 
