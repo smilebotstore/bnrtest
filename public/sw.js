@@ -1,9 +1,9 @@
 /**
- * BNR Service Worker v2
- * Caches core static assets with local fallback.
+ * BNR Service Worker v3
+ * Caches core static assets for clean SPA architecture.
  */
 
-const CACHE_NAME = 'bnr-pwa-v2';
+const CACHE_NAME = 'bnr-pwa-v3';
 const ASSETS_TO_CACHE = [
     '/',
     '/index.html',
@@ -15,18 +15,7 @@ const ASSETS_TO_CACHE = [
     '/js/config.js',
     '/js/theme.js',
     '/js/api.js',
-    '/js/auth-guard.js',
-    '/js/components.js',
-    '/pages/login.html',
-    '/pages/dashboard.html',
-    '/pages/transfer.html',
-    '/pages/mutasi.html',
-    '/pages/qris.html',
-    '/pages/topup.html',
-    '/pages/kartu.html',
-    '/pages/notifikasi.html',
-    '/pages/profil.html',
-    '/pages/admin.html'
+    '/js/app.js'
 ];
 
 self.addEventListener('install', (event) => {

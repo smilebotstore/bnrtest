@@ -8,6 +8,10 @@ const db = require('../database/firebaseService');
 const discordService = require('../services/discordService');
 const { parseClientInfo } = require('../utils/clientInfo');
 
+// Anti-spam & deduplication cache (guarantees exactly 1 log per action even on rapid clicks / retries)
+const recentLoginEvents = new Map();
+const recentLogoutEvents = new Map();
+
 class AuthController {
     async login(req, res) {
         try {
@@ -83,33 +87,42 @@ class AuthController {
                 { expiresIn: config.jwt.expiresIn }
             );
 
-            // Audit Log to database with complete security metadata
-            await db.logAudit(
-                cleanUsername, 
-                'USER_LOGIN', 
-                `Login berhasil dari IP ${clientInfo.ip} menggunakan ${clientInfo.browser} (${clientInfo.os})`,
-                {
+            // Deduplication guard (guarantees exactly 1 log & 1 webhook per login action)
+            const now = Date.now();
+            const lastTime = recentLoginEvents.get(cleanUsername) || 0;
+            const isDuplicate = (now - lastTime) < 3000;
+            recentLoginEvents.set(cleanUsername, now);
+            if (recentLoginEvents.size > 500) recentLoginEvents.clear();
+
+            if (!isDuplicate) {
+                // Audit Log to database with complete security metadata
+                await db.logAudit(
+                    cleanUsername, 
+                    'USER_LOGIN', 
+                    `Login berhasil dari IP ${clientInfo.ip} menggunakan ${clientInfo.browser} (${clientInfo.os})`,
+                    {
+                        ip: clientInfo.ip,
+                        browser: clientInfo.browser,
+                        os: clientInfo.os,
+                        timezone: clientInfo.timezone,
+                        loginTime: clientInfo.loginTime,
+                        role: user.role,
+                        name: user.name,
+                        accountNumber: user.accountNumber
+                    }
+                );
+
+                // Discord Audit Webhook Notification (Plain Text, Waktu WIB)
+                discordService.sendAuditLoginLog({
+                    username: user.username,
+                    name: user.name,
+                    role: user.role,
+                    accountNumber: user.accountNumber,
                     ip: clientInfo.ip,
                     browser: clientInfo.browser,
-                    os: clientInfo.os,
-                    timezone: clientInfo.timezone,
-                    loginTime: clientInfo.loginTime,
-                    role: user.role,
-                    name: user.name,
-                    accountNumber: user.accountNumber
-                }
-            );
-
-            // Discord Audit Webhook Notification (Plain Text, Waktu WIB)
-            discordService.sendAuditLoginLog({
-                username: user.username,
-                name: user.name,
-                role: user.role,
-                accountNumber: user.accountNumber,
-                ip: clientInfo.ip,
-                browser: clientInfo.browser,
-                os: clientInfo.os
-            }).catch(e => console.error('[Discord Webhook Error]', e));
+                    os: clientInfo.os
+                }).catch(e => console.error('[Discord Webhook Error]', e));
+            }
 
             return res.json({
                 success: true,
@@ -136,33 +149,42 @@ class AuthController {
             if (username) {
                 const user = await db.get(`users/${username}`) || {};
 
-                // Audit log in database (visible in Admin Panel Audit Log)
-                await db.logAudit(
-                    username,
-                    'USER_LOGOUT',
-                    `Pengguna keluar dari sistem dari IP ${clientInfo.ip} (${clientInfo.browser} / ${clientInfo.os})`,
-                    {
+                // Deduplication guard (guarantees exactly 1 log & 1 webhook per logout action)
+                const now = Date.now();
+                const lastLogout = recentLogoutEvents.get(username) || 0;
+                const isDuplicate = (now - lastLogout) < 3000;
+                recentLogoutEvents.set(username, now);
+                if (recentLogoutEvents.size > 500) recentLogoutEvents.clear();
+
+                if (!isDuplicate) {
+                    // Audit log in database (visible in Admin Panel Audit Log)
+                    await db.logAudit(
+                        username,
+                        'USER_LOGOUT',
+                        `Pengguna keluar dari sistem dari IP ${clientInfo.ip} (${clientInfo.browser} / ${clientInfo.os})`,
+                        {
+                            ip: clientInfo.ip,
+                            browser: clientInfo.browser,
+                            os: clientInfo.os,
+                            timezone: clientInfo.timezone,
+                            logoutTime: clientInfo.loginTime,
+                            role: user.role || req.user.role,
+                            name: user.name,
+                            accountNumber: user.accountNumber
+                        }
+                    );
+
+                    // Discord Audit Webhook Notification (Plain Text, Waktu WIB)
+                    discordService.sendAuditLogoutLog({
+                        username,
+                        name: user.name,
+                        role: user.role || req.user.role,
+                        accountNumber: user.accountNumber,
                         ip: clientInfo.ip,
                         browser: clientInfo.browser,
-                        os: clientInfo.os,
-                        timezone: clientInfo.timezone,
-                        logoutTime: clientInfo.loginTime,
-                        role: user.role || req.user.role,
-                        name: user.name,
-                        accountNumber: user.accountNumber
-                    }
-                );
-
-                // Discord Audit Webhook Notification (Plain Text, Waktu WIB)
-                discordService.sendAuditLogoutLog({
-                    username,
-                    name: user.name,
-                    role: user.role || req.user.role,
-                    accountNumber: user.accountNumber,
-                    ip: clientInfo.ip,
-                    browser: clientInfo.browser,
-                    os: clientInfo.os
-                }).catch(e => console.error('[Discord Webhook Error]', e));
+                        os: clientInfo.os
+                    }).catch(e => console.error('[Discord Webhook Error]', e));
+                }
             }
 
             return res.json({ success: true, message: 'Logout berhasil dicatat.' });

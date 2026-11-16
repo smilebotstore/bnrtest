@@ -195,8 +195,12 @@ function togglePasswordVisibility(inputId, iconId) {
     lucide.createIcons();
 }
 
+let isLoggingIn = false;
 async function handleLogin(e) {
     e.preventDefault();
+    if (isLoggingIn) return;
+    isLoggingIn = true;
+
     const btn = document.getElementById('btnLoginSubmit');
     const username = document.getElementById('loginUsername').value.trim();
     const password = document.getElementById('loginPassword').value;
@@ -230,6 +234,7 @@ async function handleLogin(e) {
         btn.disabled = false;
         btn.innerHTML = `<span>Masuk ke Layanan</span><i data-lucide="arrow-right" class="w-4 h-4"></i>`;
         lucide.createIcons();
+        setTimeout(() => { isLoggingIn = false; }, 2000);
     }
 }
 
