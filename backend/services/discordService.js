@@ -1,10 +1,12 @@
 /**
  * Discord Notification Service (Server-side Only)
- * Webhook URL is securely kept in environment variables and never exposed to the client.
+ * Restored to original authentic plain text markdown format.
+ * Uses dedicated webhook URL for Audit Logs (Login & Logout) from .env.
  */
 const config = require('../../config');
 
 class DiscordService {
+    // 1. Transaction Webhook (Original Plain Text Format)
     async sendTransactionLog({ senderName, senderAccount, receiverName, receiverAccount, amount, txId, note }) {
         const webhookUrl = config.discord.webhookUrl;
         if (!webhookUrl || webhookUrl.includes('YOUR_DISCORD_WEBHOOK_URL')) {
@@ -16,27 +18,13 @@ class DiscordService {
         };
 
         const maskAccount = (accNo) => {
-            if (!accNo || accNo.length < 4) return '****';
-            return accNo.slice(0, 3) + '****' + accNo.slice(-3);
+            if (!accNo || accNo.length < 4) return '••••';
+            return accNo.substring(0, 3) + '••••' + accNo.substring(7);
         };
 
+        // Format asli persis dari script.js BNR
         const payload = {
-            embeds: [
-                {
-                    title: "BNR | TRANSFER BERHASIL",
-                    color: 13369344, // #CC0000 Crimson Red
-                    description: `Transaksi antar rekening Bank Nusantara Roblox telah berhasil diproses oleh sistem.`,
-                    fields: [
-                        { name: "Pengirim", value: `${senderName}\n\`${maskAccount(senderAccount)}\``, inline: true },
-                        { name: "Penerima", value: `${receiverName}\n\`${maskAccount(receiverAccount)}\``, inline: true },
-                        { name: "Nominal Transfer", value: `**${formatCurrency(amount)}**`, inline: false },
-                        { name: "Catatan", value: note || "-", inline: true },
-                        { name: "Transaction ID", value: `\`${txId}\``, inline: true }
-                    ],
-                    footer: { text: "Bank Nusantara Roblox — Virtual Banking Security" },
-                    timestamp: new Date().toISOString()
-                }
-            ]
+            content: `**BNR | TRANSACTION LOG**\n\`\`\`BNR | TRANSFER BERHASIL\n\nPengirim: ${senderName}\nRekening: ${maskAccount(senderAccount)}\n\nPenerima: ${receiverName}\nRekening: ${maskAccount(receiverAccount)}\n\nNominal: ${formatCurrency(amount)}\nTransaction ID: ${txId}\nWaktu: ${new Date().toLocaleString('id-ID')} WIB\`\`\``
         };
 
         try {
@@ -46,49 +34,51 @@ class DiscordService {
                 body: JSON.stringify(payload)
             });
         } catch (err) {
-            console.error('[Discord Log Error]', err.message);
+            console.error('[Discord Transaction Log Error]', err.message);
         }
     }
 
-    async sendLoginLog({ username, name, role, accountNumber, ip, browser, os, timezone, loginTime }) {
-        const webhookUrl = config.discord.webhookUrl;
-        if (!webhookUrl || webhookUrl.includes('YOUR_DISCORD_WEBHOOK_URL')) {
+    // 2. Audit Webhook - Login Detection (Plain Text Format)
+    async sendAuditLoginLog({ username, name, role, accountNumber, ip, browser, os, timezone, loginTime }) {
+        const auditWebhookUrl = config.discord.auditWebhookUrl;
+        if (!auditWebhookUrl || auditWebhookUrl.includes('YOUR_DISCORD_WEBHOOK_URL')) {
             return;
         }
 
-        const isSuperAdmin = role === 'SUPER_ADMIN' || role === 'ADMIN';
-        const embedColor = isSuperAdmin ? 13369344 : 3447003; // Red for Admin (#CC0000), Blue for Customer (#3498DB)
-        const titleText = isSuperAdmin ? '🚨 [SECURITY AUDIT] LOGIN ADMINISTRATOR TERDETEKSI' : '👤 [AUDIT LOG] LOGIN NASABAH TERDETEKSI';
-
         const payload = {
-            embeds: [
-                {
-                    title: titleText,
-                    color: embedColor,
-                    description: `Aktivitas autentikasi berhasil tercatat ke sistem **Bank Nusantara Roblox (BNR)**.`,
-                    fields: [
-                        { name: "👤 Pengguna / Akun", value: `**@${username}**\n${name || '-'} (\`${accountNumber || '-'}\`)`, inline: true },
-                        { name: "🛡️ Role Hak Akses", value: `\`${role || 'CUSTOMER'}\``, inline: true },
-                        { name: "🌐 IP Address", value: `\`${ip || '127.0.0.1'}\``, inline: true },
-                        { name: "💻 Operating System", value: `${os || 'Unknown OS'}`, inline: true },
-                        { name: "🌍 Web Browser", value: `${browser || 'Unknown Browser'}`, inline: true },
-                        { name: "🕒 Zona Waktu (Timezone)", value: `${timezone || 'Asia/Jakarta (WIB)'}`, inline: true },
-                        { name: "📅 Tanggal & Waktu Login", value: `**${loginTime}**`, inline: false }
-                    ],
-                    footer: { text: "BNR Virtual Security & Audit System • Zero Leak Architecture" },
-                    timestamp: new Date().toISOString()
-                }
-            ]
+            content: `**BNR | AUDIT LOG - LOGIN DETECTED**\n\`\`\`BNR | AUTENTIKASI PENGGUNA\n\nUsername: @${username}\nNama: ${name || '-'}\nRole: ${role || 'CUSTOMER'}\nRekening: ${accountNumber || '-'}\n\nIP Address: ${ip || '127.0.0.1'}\nBrowser: ${browser || 'Unknown'}\nOperating System: ${os || 'Unknown'}\nTimezone: ${timezone || 'Asia/Jakarta (WIB)'}\nWaktu: ${loginTime}\`\`\``
         };
 
         try {
-            await fetch(webhookUrl, {
+            await fetch(auditWebhookUrl, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
             });
         } catch (err) {
-            console.error('[Discord Login Log Error]', err.message);
+            console.error('[Discord Audit Login Error]', err.message);
+        }
+    }
+
+    // 3. Audit Webhook - Logout Detection (Plain Text Format)
+    async sendAuditLogoutLog({ username, name, role, accountNumber, ip, browser, os, timezone, logoutTime }) {
+        const auditWebhookUrl = config.discord.auditWebhookUrl;
+        if (!auditWebhookUrl || auditWebhookUrl.includes('YOUR_DISCORD_WEBHOOK_URL')) {
+            return;
+        }
+
+        const payload = {
+            content: `**BNR | AUDIT LOG - LOGOUT DETECTED**\n\`\`\`BNR | PENGGUNA KELUAR SISTEM\n\nUsername: @${username}\nNama: ${name || '-'}\nRole: ${role || 'CUSTOMER'}\nRekening: ${accountNumber || '-'}\n\nIP Address: ${ip || '127.0.0.1'}\nBrowser: ${browser || 'Unknown'}\nOperating System: ${os || 'Unknown'}\nTimezone: ${timezone || 'Asia/Jakarta (WIB)'}\nWaktu: ${logoutTime}\`\`\``
+        };
+
+        try {
+            await fetch(auditWebhookUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+        } catch (err) {
+            console.error('[Discord Audit Logout Error]', err.message);
         }
     }
 }

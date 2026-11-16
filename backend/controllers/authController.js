@@ -100,8 +100,8 @@ class AuthController {
                 }
             );
 
-            // Discord Webhook Notification with rich embed
-            discordService.sendLoginLog({
+            // Discord Audit Webhook Notification (Plain Text)
+            discordService.sendAuditLoginLog({
                 username: user.username,
                 name: user.name,
                 role: user.role,
@@ -121,13 +121,58 @@ class AuthController {
                     username: user.username,
                     name: user.name,
                     role: user.role,
-                    accountNumber: user.accountNumber,
-                    lastLoginInfo
+                    accountNumber: user.accountNumber
                 }
             });
         } catch (err) {
             console.error('[Login Error]', err);
             return res.status(500).json({ success: false, message: 'Terjadi kesalahan sistem saat proses login.' });
+        }
+    }
+
+    async logout(req, res) {
+        try {
+            const clientInfo = parseClientInfo(req);
+            const username = req.user?.username;
+
+            if (username) {
+                const user = await db.get(`users/${username}`) || {};
+
+                // Audit log in database (visible in Admin Panel Audit Log)
+                await db.logAudit(
+                    username,
+                    'USER_LOGOUT',
+                    `Pengguna keluar dari sistem dari IP ${clientInfo.ip} (${clientInfo.browser} / ${clientInfo.os})`,
+                    {
+                        ip: clientInfo.ip,
+                        browser: clientInfo.browser,
+                        os: clientInfo.os,
+                        timezone: clientInfo.timezone,
+                        logoutTime: clientInfo.loginTime,
+                        role: user.role || req.user.role,
+                        name: user.name,
+                        accountNumber: user.accountNumber
+                    }
+                );
+
+                // Discord Audit Webhook Notification (Plain Text)
+                discordService.sendAuditLogoutLog({
+                    username,
+                    name: user.name,
+                    role: user.role || req.user.role,
+                    accountNumber: user.accountNumber,
+                    ip: clientInfo.ip,
+                    browser: clientInfo.browser,
+                    os: clientInfo.os,
+                    timezone: clientInfo.timezone,
+                    logoutTime: clientInfo.loginTime
+                }).catch(e => console.error('[Discord Webhook Error]', e));
+            }
+
+            return res.json({ success: true, message: 'Logout berhasil dicatat.' });
+        } catch (err) {
+            console.error('[Logout Error]', err);
+            return res.json({ success: true });
         }
     }
 
@@ -147,9 +192,7 @@ class AuthController {
                     name: user.name,
                     role: user.role,
                     accountNumber: user.accountNumber,
-                    createdAt: user.createdAt,
-                    lastLogin: user.lastLogin,
-                    lastLoginInfo: user.lastLoginInfo || null
+                    createdAt: user.createdAt
                 },
                 account: account || {
                     accountNumber: user.accountNumber,

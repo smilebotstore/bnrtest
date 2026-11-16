@@ -63,7 +63,7 @@ class BnrApiClient {
                 this.clearSession();
                 const currentPath = window.location.pathname;
                 if (!currentPath.includes('login') && !currentPath.endsWith('/index.html') && currentPath !== '/') {
-                    window.location.href = '/pages/login.html';
+                    window.location.href = '/login';
                 }
                 throw new Error(data.message || 'Sesi login telah berakhir.');
             }
@@ -96,9 +96,14 @@ class BnrApiClient {
         return data;
     }
 
-    logout() {
-        this.clearSession();
-        window.location.href = '/pages/login.html';
+    async logout() {
+        try {
+            await this.request('/api/auth/logout', { method: 'POST' });
+        } catch (e) {
+            console.warn('Logout notification omitted:', e);
+        } finally {
+            this.clearSession();
+        }
     }
 
     async getMe() {

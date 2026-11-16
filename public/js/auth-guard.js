@@ -10,7 +10,7 @@
 
     if (!isAuth && !isLoginPage && !isRoot) {
         // Redirect to login
-        window.location.href = '/pages/login.html';
+        window.location.href = '/login';
     } else if (isAuth && isLoginPage) {
         // If already logged in and visiting login page, go to dashboard
         window.location.href = '/pages/dashboard.html';

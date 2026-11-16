@@ -59,8 +59,7 @@ class AdminController {
                     accountNumber: u.accountNumber,
                     balance: acc.balance || 0,
                     createdAt: u.createdAt,
-                    lastLogin: u.lastLogin,
-                    lastLoginInfo: u.lastLoginInfo || null
+                    lastLogin: u.lastLogin
                 };
             });
 

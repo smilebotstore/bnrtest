@@ -17,7 +17,8 @@ const config = {
         prefix: process.env.FIREBASE_DB_PREFIX || 'bnr/'
     },
     discord: {
-        webhookUrl: process.env.DISCORD_WEBHOOK_URL || ''
+        webhookUrl: process.env.DISCORD_WEBHOOK_URL || '',
+        auditWebhookUrl: process.env.DISCORD_AUDIT_WEBHOOK_URL || ''
     },
     adminSeed: {
         name: process.env.ADMIN_NAME || 'Haruukii Dharmawijaya',

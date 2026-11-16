@@ -243,9 +243,9 @@ function confirmLogout() {
         cancelButtonColor: '#64748B',
         confirmButtonText: 'Ya, Keluar',
         cancelButtonText: 'Batal'
-    }).then((res) => {
+    }).then(async (res) => {
         if (res.isConfirmed) {
-            window.bnrApi.clearSession();
+            await window.bnrApi.logout();
             currentUser = null;
             currentAccount = null;
             showAuthView();
@@ -815,86 +815,25 @@ async function renderMutationView() {
 // --- QR PAYMENT VIEW ---
 function renderQRView() {
     const contentArea = document.getElementById('contentArea');
-    const customQris = window.BNR_CONFIG?.branding?.qrisImageUrl;
-    const dynamicQr = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&margin=15&data=BNR:ID12026${currentUser.accountNumber}:${encodeURIComponent(currentUser.name)}`;
-    const qrisSrc = (customQris && customQris.trim() !== '') ? customQris : dynamicQr;
-
     contentArea.innerHTML = `
-        <div class="max-w-md mx-auto page-fade-enter">
-            <!-- QRIS CARD BERSTANDAR NASIONAL -->
-            <div class="bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 rounded-3xl p-6 sm:p-7 shadow-lg text-center relative overflow-hidden">
-                
-                <!-- Header Banner QRIS -->
-                <div class="flex items-center justify-between pb-4 mb-4 border-b border-slate-100 dark:border-slate-800">
-                    <div class="flex items-center space-x-2">
-                        <img src="${window.BNR_CONFIG?.branding?.logoUrl || '/assets/images/bnr-logo.svg'}" class="w-8 h-8 object-contain" alt="BNR Logo" onerror="this.src='/assets/images/bnr-logo.svg'">
-                        <div class="text-left leading-tight">
-                            <span class="font-extrabold text-sm tracking-wider text-slate-800 dark:text-white uppercase">BNR PAY</span>
-                            <span class="block text-[9px] text-slate-400 font-semibold">BANK NUSANTARA ROBLOX</span>
-                        </div>
-                    </div>
-                    <div class="flex items-center space-x-1.5">
-                        <span class="px-2 py-0.5 bg-red-600 text-white font-black text-xs rounded tracking-wider shadow-sm">QRIS</span>
-                        <span class="px-2 py-0.5 bg-slate-900 text-white font-bold text-[10px] rounded tracking-wider">GPN</span>
-                    </div>
-                </div>
-
-                <!-- Info Pemilik Akun / Merchant -->
-                <div class="mb-4 text-center">
-                    <h4 class="font-extrabold text-base text-slate-900 dark:text-white tracking-wide">${currentUser.name}</h4>
-                    <p class="text-xs font-mono font-bold text-bnr-red tracking-wider mt-0.5">NMID: ID12026${currentUser.accountNumber}</p>
-                    <p class="text-[10px] text-slate-400">Nomor Rekening: ${maskAccount(currentUser.accountNumber)}</p>
-                </div>
-
-                <!-- QRIS Frame (White Background, Quiet Zone Margin, Object Contain - Dijamin TIDAK TERPOTONG) -->
-                <div class="bg-white p-4 rounded-2xl border-2 border-slate-200 shadow-sm inline-block mx-auto mb-4 w-full max-w-[280px]">
-                    <div class="w-full flex items-center justify-center bg-white overflow-hidden p-1">
-                        <img id="qrisDisplayImage" 
-                             src="${qrisSrc}" 
-                             class="w-56 h-56 max-w-full aspect-square object-contain block mx-auto" 
-                             alt="QRIS ${currentUser.name}"
-                             onerror="this.src='https://api.qrserver.com/v1/create-qr-code/?size=300x300&margin=15&data=${currentUser.accountNumber}'">
-                    </div>
-                    <!-- Garis & Label Bawah Frame -->
-                    <div class="pt-2.5 mt-2 border-t border-slate-100 flex items-center justify-between text-[10px] text-slate-500 font-medium px-1">
-                        <span>STANDARISASI QRIS</span>
-                        <span class="font-bold text-red-600">ASPI / BI VERIFIED</span>
-                    </div>
-                </div>
-
-                <!-- Footer Text -->
-                <div class="space-y-1 mb-6 text-center">
-                    <p class="text-[11px] font-bold text-slate-700 dark:text-slate-300">SATU QRIS UNTUK SEMUA PEMBAYARAN</p>
-                    <p class="text-[10px] text-slate-400">Pindai kode QRIS ini melalui m-Banking BNR atau e-Wallet lainnya.</p>
-                </div>
-
-                <!-- Action Buttons -->
-                <div class="space-y-2.5">
-                    <button onclick="promptSimulatedQRScan()" class="w-full bg-gradient-to-r from-bnr-red to-red-700 hover:from-red-700 hover:to-bnr-darkred text-white py-3.5 rounded-xl font-semibold text-xs transition flex items-center justify-center space-x-2 shadow-md">
-                        <i data-lucide="scan" class="w-4 h-4"></i>
-                        <span>Simulasi Bayar / Scan Kode QR</span>
-                    </button>
-                    <button onclick="downloadQRIS()" class="w-full bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 py-3 rounded-xl font-semibold text-xs transition flex items-center justify-center space-x-2">
-                        <i data-lucide="download" class="w-4 h-4"></i>
-                        <span>Unduh / Simpan Gambar QRIS</span>
-                    </button>
-                </div>
+        <div class="max-w-md mx-auto bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 text-center shadow-sm page-fade-enter">
+            <h3 class="text-lg font-bold text-slate-800 dark:text-white mb-1">BNR Quick Payment QR</h3>
+            <p class="text-xs text-slate-500 dark:text-slate-400 mb-6">Tunjukkan QR ini untuk menerima saldo atau scan QR nasabah lain.</p>
+            
+            <div class="p-6 bg-slate-900 dark:bg-white rounded-2xl inline-block mb-6 shadow-inner">
+                <img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&margin=10&data=${currentUser.accountNumber}" class="w-48 h-48 block mx-auto object-contain" alt="QR Code">
             </div>
+
+            <p class="text-xs font-mono font-bold text-slate-700 dark:text-slate-300 mb-1">${maskAccount(currentUser.accountNumber)}</p>
+            <p class="text-xs text-slate-400 mb-6">${currentUser.name}</p>
+
+            <button onclick="promptSimulatedQRScan()" class="w-full bg-bnr-red hover:bg-bnr-darkred text-white py-3 rounded-xl font-semibold text-xs transition flex items-center justify-center space-x-2">
+                <i data-lucide="scan" class="w-4 h-4"></i>
+                <span>Simulasi Bayar via Kode QR</span>
+            </button>
         </div>
     `;
     lucide.createIcons();
-}
-
-function downloadQRIS() {
-    const img = document.getElementById('qrisDisplayImage');
-    if (!img) return;
-    const a = document.createElement('a');
-    a.href = img.src;
-    a.target = '_blank';
-    a.download = `QRIS-BNR-${currentUser.accountNumber}.png`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
 }
 
 function promptSimulatedQRScan() {
@@ -1056,36 +995,6 @@ function renderProfileView() {
                 </div>
             </div>
 
-            <!-- Detail Audit Keamanan Sesi Terakhir -->
-            <div class="border-t border-slate-200 dark:border-slate-800 pt-6">
-                <h4 class="font-bold text-sm text-slate-800 dark:text-white mb-3 flex items-center space-x-1.5">
-                    <i data-lucide="shield-check" class="w-4 h-4 text-emerald-500"></i>
-                    <span>Informasi Sesi & Audit Login Terakhir</span>
-                </h4>
-                <div class="p-4 bg-slate-50 dark:bg-slate-800/40 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-2.5 text-xs">
-                    <div class="flex justify-between items-center py-1 border-b border-slate-200/50 dark:border-slate-800/50">
-                        <span class="text-slate-400">Waktu & Tanggal Login:</span>
-                        <strong class="text-slate-800 dark:text-white">${currentUser.lastLoginInfo?.loginTime || (currentUser.lastLogin ? new Date(currentUser.lastLogin).toLocaleString('id-ID') : 'Baru saja')}</strong>
-                    </div>
-                    <div class="flex justify-between items-center py-1 border-b border-slate-200/50 dark:border-slate-800/50">
-                        <span class="text-slate-400">Alamat IP:</span>
-                        <span class="font-mono px-2 py-0.5 bg-slate-200 dark:bg-slate-700 rounded text-slate-800 dark:text-white text-[11px] font-bold">${currentUser.lastLoginInfo?.ip || '127.0.0.1 (Localhost)'}</span>
-                    </div>
-                    <div class="flex justify-between items-center py-1 border-b border-slate-200/50 dark:border-slate-800/50">
-                        <span class="text-slate-400">Peramban (Browser):</span>
-                        <strong class="text-slate-800 dark:text-white">${currentUser.lastLoginInfo?.browser || 'Browser Terverifikasi'}</strong>
-                    </div>
-                    <div class="flex justify-between items-center py-1 border-b border-slate-200/50 dark:border-slate-800/50">
-                        <span class="text-slate-400">Sistem Operasi (OS):</span>
-                        <strong class="text-slate-800 dark:text-white">${currentUser.lastLoginInfo?.os || 'Desktop OS'}</strong>
-                    </div>
-                    <div class="flex justify-between items-center py-1">
-                        <span class="text-slate-400">Zona Waktu (Timezone):</span>
-                        <strong class="text-slate-800 dark:text-white">${currentUser.lastLoginInfo?.timezone || 'Asia/Jakarta (WIB)'}</strong>
-                    </div>
-                </div>
-            </div>
-
             <div class="border-t border-slate-200 dark:border-slate-800 pt-6">
                 <h4 class="font-bold text-sm text-slate-800 dark:text-white mb-2">Layanan Perubahan Identitas</h4>
                 <p class="text-xs text-slate-500 mb-4">Penggantian nama terdaftar dikenakan biaya administrasi resmi BNR sebesar <strong>${formatCurrency(systemSettings.profileChangeFee)}</strong>.</p>
@@ -1219,7 +1128,6 @@ async function renderAdminUsers() {
                         <th class="pb-2">Rekening</th>
                         <th class="pb-2">Saldo</th>
                         <th class="pb-2">Status</th>
-                        <th class="pb-2">Terakhir Login (IP, Browser & OS)</th>
                         <th class="pb-2 text-right">Aksi</th>
                     </tr>
                 </thead>
@@ -1230,17 +1138,6 @@ async function renderAdminUsers() {
                             <td class="py-2.5 font-mono text-slate-500">${u.accountNumber}</td>
                             <td class="py-2.5 font-mono text-emerald-600 font-bold">${formatCurrency(u.balance)}</td>
                             <td class="py-2.5">${u.status}</td>
-                            <td class="py-2.5">
-                                ${u.lastLoginInfo ? `
-                                    <div class="text-[11px] font-semibold text-slate-800 dark:text-slate-200">${u.lastLoginInfo.loginTime || new Date(u.lastLogin).toLocaleString('id-ID')}</div>
-                                    <div class="text-[10px] text-slate-400 font-mono">${u.lastLoginInfo.ip} &bull; ${u.lastLoginInfo.browser} (${u.lastLoginInfo.os})</div>
-                                    <div class="text-[9px] text-slate-500">${u.lastLoginInfo.timezone || 'Asia/Jakarta'}</div>
-                                ` : (u.lastLogin ? `
-                                    <div class="text-[11px] text-slate-500">${new Date(u.lastLogin).toLocaleString('id-ID')}</div>
-                                ` : `
-                                    <span class="text-[10px] text-slate-400 italic">Belum pernah login</span>
-                                `)}
-                            </td>
                             <td class="py-2.5 text-right space-x-1">
                                 <button onclick="promptEditBalance('${u.accountNumber}')" class="px-2 py-1 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 rounded text-[10px]">Edit Saldo</button>
                                 <button onclick="toggleUserStatus('${u.username}', '${u.status}')" class="px-2 py-1 ${u.status === 'ACTIVE' ? 'bg-rose-50 text-rose-600' : 'bg-emerald-50 text-emerald-600'} rounded text-[10px]">
