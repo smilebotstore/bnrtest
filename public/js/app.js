@@ -1,0 +1,1335 @@
+/**
+ * BNR — Bank Nusantara Roblox
+ * Core Application Engine & Clean Router
+ * Preserves 100% of the authentic BNR UI with secure backend integration.
+ */
+
+// App State
+let currentUser = null;
+let currentAccount = null;
+let currentView = 'dashboard';
+let systemSettings = {
+    profileChangeFee: 5000000,
+    transferFee: 10000,
+    topUpFee: 5000,
+    minimumTransfer: 10000,
+    maximumTransfer: 100000000000000000,
+    dailyTransferLimit: 100000000000000000,
+    maintenanceMode: false
+};
+let isBalanceHidden = false;
+
+// Route mapping: clean URL path <-> view ID
+const ROUTE_MAP = {
+    '/': 'dashboard',
+    '/dashboard': 'dashboard',
+    '/transfer': 'transfer',
+    '/mutasi': 'mutation',
+    '/mutation': 'mutation',
+    '/qris': 'qr',
+    '/qr': 'qr',
+    '/topup': 'topup',
+    '/kartu': 'virtualCard',
+    '/virtualcard': 'virtualCard',
+    '/notifikasi': 'notifications',
+    '/notifications': 'notifications',
+    '/profil': 'profile',
+    '/profile': 'profile',
+    '/admin': 'admin',
+    '/login': 'login'
+};
+
+const VIEW_TO_PATH = {
+    'dashboard': '/dashboard',
+    'transfer': '/transfer',
+    'mutation': '/mutasi',
+    'qr': '/qris',
+    'topup': '/topup',
+    'virtualCard': '/kartu',
+    'notifications': '/notifikasi',
+    'profile': '/profil',
+    'admin': '/admin',
+    'login': '/login'
+};
+
+// 1. INITIALIZATION & LOADING SEQUENCE
+document.addEventListener('DOMContentLoaded', () => {
+    applyBrandingLogos();
+    lucide.createIcons();
+    runLoadingSequence();
+
+    // Listen to browser Back/Forward buttons for clean SPA routing
+    window.addEventListener('popstate', () => {
+        handleUrlRouting();
+    });
+});
+
+function applyBrandingLogos() {
+    const cfg = window.BNR_CONFIG || {};
+    const logoUrl = (cfg.branding && cfg.branding.logoUrl) || '/assets/images/bnr-logo.svg';
+    const fallbackLogo = (cfg.branding && cfg.branding.fallbackLogo) || '/assets/images/bnr-logo.svg';
+
+    document.querySelectorAll('.bnr-brand-logo, #splashLogo').forEach(img => {
+        img.src = logoUrl;
+        img.onerror = () => {
+            if (img.src !== fallbackLogo) img.src = fallbackLogo;
+        };
+    });
+}
+
+function runLoadingSequence() {
+    const progressBar = document.getElementById('progressBar');
+    const loadingPercent = document.getElementById('loadingPercent');
+    const loadingStatus = document.getElementById('loadingStatus');
+
+    const steps = [
+        { percent: 20, status: 'Menghubungkan sistem...' },
+        { percent: 45, status: 'Memuat database...' },
+        { percent: 70, status: 'Memverifikasi sesi...' },
+        { percent: 90, status: 'Menyiapkan aplikasi...' },
+        { percent: 100, status: 'Sistem siap.' }
+    ];
+
+    let currentStep = 0;
+    const interval = setInterval(() => {
+        if (currentStep < steps.length) {
+            const step = steps[currentStep];
+            if (progressBar) progressBar.style.width = `${step.percent}%`;
+            if (loadingPercent) loadingPercent.textContent = `${step.percent}%`;
+            if (loadingStatus) loadingStatus.textContent = step.status;
+            currentStep++;
+        } else {
+            clearInterval(interval);
+            setTimeout(() => {
+                initAppSystem();
+            }, 300);
+        }
+    }, 200);
+}
+
+async function initAppSystem() {
+    const loadingScreen = document.getElementById('loadingScreen');
+    if (loadingScreen) loadingScreen.classList.add('hidden');
+
+    try {
+        // Fetch public settings from backend
+        const pubConfig = await window.bnrApi.getPublicConfig().catch(() => ({}));
+        if (pubConfig.success) {
+            systemSettings.maintenanceMode = pubConfig.maintenanceMode;
+            if (pubConfig.fees) {
+                systemSettings = { ...systemSettings, ...pubConfig.fees };
+            }
+        }
+
+        // Check active session with backend
+        if (window.bnrApi.isAuthenticated()) {
+            const meRes = await window.bnrApi.getMe().catch(() => null);
+            if (meRes && meRes.success && meRes.user) {
+                currentUser = meRes.user;
+                currentAccount = meRes.account;
+
+                if (systemSettings.maintenanceMode && currentUser.role !== 'SUPER_ADMIN') {
+                    showMaintenanceScreen();
+                    return;
+                }
+
+                showMainApp();
+                handleUrlRouting();
+                startBackgroundPolling();
+                return;
+            }
+        }
+
+        // Unauthenticated -> Show Auth
+        showAuthView();
+    } catch (err) {
+        console.error('App init error:', err);
+        showAuthView();
+    }
+}
+
+// 2. AUTHENTICATION & VIEWS CONTROL
+function showAuthView() {
+    document.getElementById('loadingScreen').classList.add('hidden');
+    document.getElementById('maintenanceScreen').classList.add('hidden');
+    document.getElementById('mainApp').classList.add('hidden');
+    document.getElementById('authScreen').classList.remove('hidden');
+
+    if (window.location.pathname !== '/login') {
+        window.history.pushState(null, '', '/login');
+    }
+    lucide.createIcons();
+}
+
+function showMaintenanceScreen() {
+    document.getElementById('loadingScreen').classList.add('hidden');
+    document.getElementById('authScreen').classList.add('hidden');
+    document.getElementById('mainApp').classList.add('hidden');
+    document.getElementById('maintenanceScreen').classList.remove('hidden');
+    document.getElementById('maintenanceAdminLink').classList.remove('hidden');
+    lucide.createIcons();
+}
+
+function checkMaintenanceStatus() {
+    window.location.reload();
+}
+
+function showMainApp() {
+    document.getElementById('loadingScreen').classList.add('hidden');
+    document.getElementById('maintenanceScreen').classList.add('hidden');
+    document.getElementById('authScreen').classList.add('hidden');
+    document.getElementById('mainApp').classList.remove('hidden');
+    lucide.createIcons();
+}
+
+function togglePasswordVisibility(inputId, iconId) {
+    const input = document.getElementById(inputId);
+    const icon = document.getElementById(iconId);
+    if (input.type === 'password') {
+        input.type = 'text';
+        icon.setAttribute('data-lucide', 'eye-off');
+    } else {
+        input.type = 'password';
+        icon.setAttribute('data-lucide', 'eye');
+    }
+    lucide.createIcons();
+}
+
+async function handleLogin(e) {
+    e.preventDefault();
+    const btn = document.getElementById('btnLoginSubmit');
+    const username = document.getElementById('loginUsername').value.trim();
+    const password = document.getElementById('loginPassword').value;
+
+    btn.disabled = true;
+    btn.innerHTML = `<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i><span>Memverifikasi...</span>`;
+    lucide.createIcons();
+
+    try {
+        const res = await window.bnrApi.login(username, password);
+        currentUser = res.user;
+        
+        // Fetch full account details
+        const accRes = await window.bnrApi.getAccountDetails();
+        currentAccount = accRes.account;
+
+        Swal.fire({
+            icon: 'success',
+            title: 'Login Berhasil',
+            text: `Selamat datang, ${currentUser.name}!`,
+            timer: 1000,
+            showConfirmButton: false
+        }).then(() => {
+            showMainApp();
+            navigateTo('dashboard');
+            startBackgroundPolling();
+        });
+    } catch (err) {
+        Swal.fire('Gagal Masuk', err.message || 'Username atau password salah.', 'error');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = `<span>Masuk ke Layanan</span><i data-lucide="arrow-right" class="w-4 h-4"></i>`;
+        lucide.createIcons();
+    }
+}
+
+function confirmLogout() {
+    Swal.fire({
+        title: 'Konfirmasi Keluar',
+        text: 'Apakah Anda yakin ingin keluar dari sistem perbankan BNR?',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#CC0000',
+        cancelButtonColor: '#64748B',
+        confirmButtonText: 'Ya, Keluar',
+        cancelButtonText: 'Batal'
+    }).then((res) => {
+        if (res.isConfirmed) {
+            window.bnrApi.clearSession();
+            currentUser = null;
+            currentAccount = null;
+            showAuthView();
+        }
+    });
+}
+
+// 3. NAVIGATION & CLEAN URL ROUTING
+function handleUrlRouting() {
+    const path = window.location.pathname.toLowerCase();
+    const view = ROUTE_MAP[path] || 'dashboard';
+    navigateTo(view, false); // false = do not push duplicate state
+}
+
+function navigateTo(viewId, pushState = true) {
+    currentView = viewId;
+
+    // Update Clean URL in browser address bar (WITHOUT .html)
+    if (pushState) {
+        const cleanPath = VIEW_TO_PATH[viewId] || '/dashboard';
+        window.history.pushState(null, '', cleanPath);
+    }
+
+    renderSidebarAndNav();
+
+    // Close mobile drawer if open
+    const drawer = document.getElementById('mobileDrawer');
+    if (drawer && !drawer.classList.contains('hidden')) {
+        drawer.classList.add('hidden');
+    }
+
+    const titleEl = document.getElementById('pageTitle');
+    const titles = {
+        dashboard: 'Beranda',
+        transfer: 'Transfer Saldo',
+        mutation: 'Mutasi Rekening',
+        qr: 'Pembayaran QR',
+        topup: 'Pengajuan Top Up',
+        virtualCard: 'Kartu Virtual',
+        notifications: 'Notifikasi',
+        profile: 'Profil Saya',
+        admin: 'Admin Panel'
+    };
+    if (titleEl) titleEl.textContent = titles[viewId] || 'Beranda';
+    document.title = `${titles[viewId] || 'Beranda'} — BNR`;
+
+    // Render corresponding view
+    switch (viewId) {
+        case 'dashboard':
+            renderDashboardView();
+            break;
+        case 'transfer':
+            renderTransferView();
+            break;
+        case 'mutation':
+            renderMutationView();
+            break;
+        case 'qr':
+            renderQRView();
+            break;
+        case 'topup':
+            renderTopUpView();
+            break;
+        case 'virtualCard':
+            renderVirtualCardView();
+            break;
+        case 'notifications':
+            renderNotificationsView();
+            break;
+        case 'profile':
+            renderProfileView();
+            break;
+        case 'admin':
+            renderAdminPanelView();
+            break;
+        default:
+            renderDashboardView();
+            break;
+    }
+}
+
+function toggleMobileDrawer() {
+    const drawer = document.getElementById('mobileDrawer');
+    if (drawer) drawer.classList.toggle('hidden');
+}
+
+// 4. SIDEBAR & MOBILE NAVIGATION RENDERER
+function renderSidebarAndNav() {
+    if (!currentUser) return;
+    const isSuperAdmin = currentUser && currentUser.role === 'SUPER_ADMIN';
+
+    // Update Profile Info in Sidebar
+    const nameEl = document.getElementById('sidebarUserName');
+    const roleEl = document.getElementById('sidebarUserRole');
+    const avatarEl = document.getElementById('sidebarUserAvatar');
+    if (nameEl) nameEl.textContent = currentUser.name;
+    if (roleEl) roleEl.textContent = currentUser.role;
+    if (avatarEl) avatarEl.textContent = currentUser.name.charAt(0).toUpperCase();
+
+    const sidebarMenu = document.getElementById('sidebarMenu');
+    const mobileDrawerMenu = document.getElementById('mobileDrawerMenu');
+    const mobileBottomNav = document.getElementById('mobileBottomNav');
+
+    const menuItems = [
+        { id: 'dashboard', label: 'Beranda', icon: 'home' },
+        { id: 'transfer', label: 'Transfer', icon: 'send' },
+        { id: 'qr', label: 'Bayar QR', icon: 'qr-code' },
+        { id: 'mutation', label: 'Mutasi', icon: 'receipt' },
+        { id: 'topup', label: 'Top Up', icon: 'plus-circle' },
+        { id: 'virtualCard', label: 'Kartu Virtual', icon: 'credit-card' },
+        { id: 'profile', label: 'Profil Saya', icon: 'user' }
+    ];
+
+    if (isSuperAdmin) {
+        menuItems.push({ id: 'admin', label: 'Admin Panel', icon: 'shield', highlight: true });
+    }
+
+    // Desktop Sidebar Menu
+    if (sidebarMenu) {
+        sidebarMenu.innerHTML = menuItems.map(item => {
+            const isActive = currentView === item.id;
+            const activeClass = isActive ? 'bg-bnr-red text-white font-semibold' : 'text-slate-400 hover:text-white hover:bg-slate-800';
+            const badge = item.highlight ? `<span class="ml-auto bg-amber-500/20 text-amber-300 text-[10px] px-1.5 py-0.5 rounded font-mono">ADMIN</span>` : '';
+            return `
+                <button onclick="navigateTo('${item.id}')" class="w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl text-xs transition ${activeClass}">
+                    <i data-lucide="${item.icon}" class="w-4 h-4"></i>
+                    <span>${item.label}</span>
+                    ${badge}
+                </button>
+            `;
+        }).join('');
+    }
+
+    // Inject Dark Mode Button into Desktop Sidebar (Under Profile) if not already added
+    ensureThemeToggleButton();
+
+    // Mobile Drawer Menu
+    if (mobileDrawerMenu) {
+        mobileDrawerMenu.innerHTML = menuItems.map(item => {
+            const isActive = currentView === item.id;
+            const activeClass = isActive ? 'bg-bnr-red text-white font-semibold' : 'text-slate-400 hover:text-white hover:bg-slate-800';
+            return `
+                <button onclick="navigateTo('${item.id}')" class="w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl text-sm transition ${activeClass}">
+                    <i data-lucide="${item.icon}" class="w-5 h-5"></i>
+                    <span>${item.label}</span>
+                </button>
+            `;
+        }).join('');
+    }
+
+    // Mobile Bottom Navigation (Active item turns RED as requested!)
+    if (mobileBottomNav) {
+        const bottomNavItems = [
+            { id: 'dashboard', label: 'Beranda', icon: 'home' },
+            { id: 'transfer', label: 'Transfer', icon: 'send' },
+            { id: 'qr', label: 'QRIS', icon: 'qr-code' },
+            { id: 'mutation', label: 'Mutasi', icon: 'receipt' },
+            { id: 'profile', label: 'Profil', icon: 'user' }
+        ];
+
+        mobileBottomNav.innerHTML = bottomNavItems.map(item => {
+            const isActive = currentView === item.id;
+            // ACTIVE STATE: Changes to red color!
+            const activeColorClass = isActive ? 'text-bnr-red font-bold' : 'text-slate-400 hover:text-slate-600';
+            const dot = isActive ? '<span class="w-1.5 h-1.5 bg-bnr-red rounded-full mt-0.5"></span>' : '';
+            return `
+                <button onclick="navigateTo('${item.id}')" class="flex flex-col items-center py-1 transition ${activeColorClass}">
+                    <i data-lucide="${item.icon}" class="w-5 h-5"></i>
+                    <span class="text-[10px] mt-0.5">${item.label}</span>
+                    ${dot}
+                </button>
+            `;
+        }).join('');
+    }
+
+    lucide.createIcons();
+}
+
+function ensureThemeToggleButton() {
+    // 1. Sidebar desktop placement (under profile button)
+    const sidebarFooter = document.querySelector('#desktopSidebar .p-4.border-t');
+    if (sidebarFooter && !sidebarFooter.querySelector('#sidebarThemeToggle')) {
+        const toggleHtml = `
+            <button id="sidebarThemeToggle" onclick="window.bnrTheme.toggleTheme()" class="w-full flex items-center justify-between px-3 py-2 mb-2 text-xs font-medium text-slate-300 hover:text-white bg-slate-900 hover:bg-slate-800 rounded-xl border border-slate-800 transition">
+                <div class="flex items-center space-x-2">
+                    <i data-lucide="moon" class="theme-icon w-4 h-4 text-amber-400"></i>
+                    <span class="theme-label">Mode Tampilan</span>
+                </div>
+                <span class="text-[10px] bg-slate-800 px-2 py-0.5 rounded text-slate-400">Ganti</span>
+            </button>
+        `;
+        const logoutBtn = sidebarFooter.querySelector('button[onclick*="confirmLogout"]');
+        if (logoutBtn) {
+            logoutBtn.insertAdjacentHTML('beforebegin', toggleHtml);
+        }
+    }
+
+    // 2. Mobile drawer placement (under profile info)
+    const drawerFooter = document.querySelector('#mobileDrawer .pt-4.border-t');
+    if (drawerFooter && !drawerFooter.querySelector('#drawerThemeToggle')) {
+        const toggleHtml = `
+            <button id="drawerThemeToggle" onclick="window.bnrTheme.toggleTheme()" class="w-full flex items-center justify-between px-3 py-2 mb-2 text-xs font-medium text-slate-300 hover:text-white bg-slate-800/80 rounded-xl transition">
+                <div class="flex items-center space-x-2">
+                    <i data-lucide="moon" class="theme-icon w-4 h-4 text-amber-400"></i>
+                    <span class="theme-label">Mode Tampilan</span>
+                </div>
+                <span class="text-[10px] bg-slate-700 px-2 py-0.5 rounded text-slate-300">Ganti</span>
+            </button>
+        `;
+        const logoutBtn = drawerFooter.querySelector('button[onclick*="confirmLogout"]');
+        if (logoutBtn) {
+            logoutBtn.insertAdjacentHTML('beforebegin', toggleHtml);
+        }
+    }
+}
+
+// Helper formats
+function maskAccount(accNo) {
+    if (!accNo) return '••••';
+    return accNo.substring(0, 3) + '••••' + accNo.substring(7);
+}
+
+function formatCurrency(amount) {
+    return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(amount);
+}
+
+// 5. VIEW RENDERERS (EXACT ORIGINAL DESIGN)
+
+// --- DASHBOARD VIEW ---
+async function renderDashboardView() {
+    const contentArea = document.getElementById('contentArea');
+    const balanceDisplay = isBalanceHidden ? '••••••••' : formatCurrency(currentAccount ? currentAccount.balance : 0);
+    const maskedAcc = maskAccount(currentUser.accountNumber);
+    const logoSrc = (window.BNR_CONFIG && window.BNR_CONFIG.branding && window.BNR_CONFIG.branding.logoUrl) || '/assets/images/bnr-logo.svg';
+
+    contentArea.innerHTML = `
+        <div class="space-y-6 page-fade-enter">
+            <!-- Greeting & Quick Status -->
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div>
+                    <h3 class="text-xl font-extrabold text-slate-800 dark:text-white">Selamat datang, ${currentUser.name}</h3>
+                    <p class="text-xs text-slate-500 dark:text-slate-400 font-medium">Layanan Perbankan Virtual Roblox Terpercaya</p>
+                </div>
+                <div class="inline-flex items-center space-x-2 px-3 py-1 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 text-xs text-slate-600 dark:text-slate-300 shadow-sm w-fit">
+                    <i data-lucide="shield-check" class="w-4 h-4 text-emerald-500"></i>
+                    <span>Status Rekening: <strong class="text-emerald-600 dark:text-emerald-400 uppercase">${currentAccount ? currentAccount.status : 'ACTIVE'}</strong></span>
+                </div>
+            </div>
+
+            <!-- ATM Card Saldo Utama -->
+            <div class="relative overflow-hidden bnr-card-gradient rounded-3xl p-6 sm:p-8 text-white shadow-xl">
+                <div class="absolute -right-10 -bottom-10 w-48 h-48 bg-white/10 rounded-full blur-2xl pointer-events-none"></div>
+                <div class="relative z-10 flex flex-col justify-between h-full space-y-8">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <span class="text-xs font-semibold tracking-widest text-red-100 uppercase">BNR Digital Account</span>
+                            <p class="text-2xl font-mono tracking-widest mt-1">${maskedAcc}</p>
+                        </div>
+                        <img src="${logoSrc}" class="bnr-brand-logo w-12 h-12 object-contain bg-white/10 p-1.5 rounded-xl border border-white/20" alt="Logo">
+                    </div>
+
+                    <div>
+                        <div class="flex items-center space-x-2 text-red-200 mb-1">
+                            <span class="text-xs font-medium">Total Saldo Aktif</span>
+                            <button onclick="toggleBalanceVisibility()" class="hover:text-white transition">
+                                <i data-lucide="${isBalanceHidden ? 'eye' : 'eye-off'}" class="w-4 h-4"></i>
+                            </button>
+                        </div>
+                        <h2 class="text-3xl sm:text-4xl font-extrabold tracking-tight font-mono">${balanceDisplay}</h2>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quick Action Grid (4 Buttons) -->
+            <div class="grid grid-cols-4 gap-3 sm:gap-4">
+                <button onclick="navigateTo('transfer')" class="flex flex-col items-center p-3 sm:p-4 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 border border-slate-200/80 dark:border-slate-800 rounded-2xl shadow-sm transition group">
+                    <div class="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-red-50 dark:bg-red-950/40 text-bnr-red flex items-center justify-center mb-2 group-hover:scale-110 transition">
+                        <i data-lucide="send" class="w-5 h-5 sm:w-6 sm:h-6"></i>
+                    </div>
+                    <span class="text-xs font-semibold text-slate-700 dark:text-slate-300">Transfer</span>
+                </button>
+                <button onclick="navigateTo('qr')" class="flex flex-col items-center p-3 sm:p-4 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 border border-slate-200/80 dark:border-slate-800 rounded-2xl shadow-sm transition group">
+                    <div class="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-red-50 dark:bg-red-950/40 text-bnr-red flex items-center justify-center mb-2 group-hover:scale-110 transition">
+                        <i data-lucide="qr-code" class="w-5 h-5 sm:w-6 sm:h-6"></i>
+                    </div>
+                    <span class="text-xs font-semibold text-slate-700 dark:text-slate-300">Bayar QR</span>
+                </button>
+                <button onclick="navigateTo('topup')" class="flex flex-col items-center p-3 sm:p-4 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 border border-slate-200/80 dark:border-slate-800 rounded-2xl shadow-sm transition group">
+                    <div class="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-red-50 dark:bg-red-950/40 text-bnr-red flex items-center justify-center mb-2 group-hover:scale-110 transition">
+                        <i data-lucide="plus-circle" class="w-5 h-5 sm:w-6 sm:h-6"></i>
+                    </div>
+                    <span class="text-xs font-semibold text-slate-700 dark:text-slate-300">Top Up</span>
+                </button>
+                <button onclick="navigateTo('mutation')" class="flex flex-col items-center p-3 sm:p-4 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 border border-slate-200/80 dark:border-slate-800 rounded-2xl shadow-sm transition group">
+                    <div class="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-red-50 dark:bg-red-950/40 text-bnr-red flex items-center justify-center mb-2 group-hover:scale-110 transition">
+                        <i data-lucide="receipt" class="w-5 h-5 sm:w-6 sm:h-6"></i>
+                    </div>
+                    <span class="text-xs font-semibold text-slate-700 dark:text-slate-300">Mutasi</span>
+                </button>
+            </div>
+
+            <!-- Recent Transactions Widget -->
+            <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-sm">
+                <div class="flex justify-between items-center mb-4">
+                    <h4 class="font-bold text-sm text-slate-800 dark:text-white">Aktivitas Transaksi Terkini</h4>
+                    <button onclick="navigateTo('mutation')" class="text-xs text-bnr-red font-semibold hover:underline">Semua Mutasi</button>
+                </div>
+                <div id="recentTxList" class="space-y-3">
+                    <div class="text-center py-6 text-slate-400 text-xs">Memuat transaksi...</div>
+                </div>
+            </div>
+        </div>
+    `;
+    lucide.createIcons();
+    loadDashboardRecentTransactions();
+}
+
+function toggleBalanceVisibility() {
+    isBalanceHidden = !isBalanceHidden;
+    renderDashboardView();
+}
+
+async function loadDashboardRecentTransactions() {
+    try {
+        const res = await window.bnrApi.getTransactionHistory();
+        const txList = res.transactions || [];
+        const container = document.getElementById('recentTxList');
+        if (!container) return;
+
+        if (txList.length === 0) {
+            container.innerHTML = `<div class="text-center py-6 text-slate-400 text-xs">Belum ada riwayat transaksi.</div>`;
+            return;
+        }
+
+        const recent5 = txList.slice(0, 5);
+        container.innerHTML = recent5.map(tx => {
+            const isOutgoing = tx.role === 'DEBIT' || tx.type === 'FEE_CHANGE_NAME';
+            const icon = isOutgoing ? 'arrow-up-right' : 'arrow-down-left';
+            const iconColor = isOutgoing ? 'text-rose-500 bg-rose-50' : 'text-emerald-500 bg-emerald-50';
+            const amountColor = isOutgoing ? 'text-rose-600' : 'text-emerald-600';
+            const sign = isOutgoing ? '-' : '+';
+            const dateStr = new Date(tx.timestamp).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' });
+
+            return `
+                <div class="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800/40 rounded-2xl border border-slate-100 dark:border-slate-800 text-xs">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-8 h-8 rounded-xl ${iconColor} flex items-center justify-center">
+                            <i data-lucide="${icon}" class="w-4 h-4"></i>
+                        </div>
+                        <div>
+                            <p class="font-bold text-slate-800 dark:text-white">${tx.note || (isOutgoing ? 'Transfer Keluar' : 'Transfer Masuk')}</p>
+                            <span class="text-[10px] text-slate-400">${dateStr}</span>
+                        </div>
+                    </div>
+                    <div class="text-right">
+                        <p class="font-extrabold ${amountColor}">${sign}${formatCurrency(tx.amount)}</p>
+                        <span class="text-[10px] text-slate-400 font-mono">${tx.id}</span>
+                    </div>
+                </div>
+            `;
+        }).join('');
+        lucide.createIcons();
+    } catch (err) {
+        console.error('Failed to load recent tx:', err);
+    }
+}
+
+// --- TRANSFER VIEW ---
+function renderTransferView() {
+    const contentArea = document.getElementById('contentArea');
+    contentArea.innerHTML = `
+        <div class="max-w-xl mx-auto bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 sm:p-8 shadow-sm page-fade-enter">
+            <h3 class="text-lg font-bold text-slate-800 dark:text-white mb-1">Transfer Rekening BNR</h3>
+            <p class="text-xs text-slate-500 dark:text-slate-400 mb-6">Kirim dana ke sesama nasabah Bank Nusantara Roblox secara instan.</p>
+
+            <form onsubmit="handleTransferSubmit(event)" class="space-y-5">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-2">Rekening Tujuan</label>
+                    <input type="text" id="transferTarget" required placeholder="Contoh: 1203847291" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-white rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-bnr-red transition font-mono">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-2">Nominal Transfer (Rp)</label>
+                    <input type="number" id="transferAmount" required min="${systemSettings.minimumTransfer}" max="${systemSettings.maximumTransfer}" placeholder="Min Rp ${systemSettings.minimumTransfer.toLocaleString('id-ID')}" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-white rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-bnr-red transition">
+                    <p class="text-[11px] text-slate-400 mt-1">Batas transaksi: ${formatCurrency(systemSettings.maximumTransfer)}</p>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-2">Catatan (Opsional)</label>
+                    <input type="text" id="transferNote" placeholder="Keterangan transaksi" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-white rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-bnr-red transition">
+                </div>
+
+                <div class="pt-2">
+                    <button type="submit" id="btnSubmitTransfer" class="w-full bg-bnr-red hover:bg-bnr-darkred text-white font-semibold py-3.5 rounded-xl shadow-md transition flex items-center justify-center space-x-2">
+                        <i data-lucide="send" class="w-4 h-4"></i>
+                        <span>Lanjutkan Transfer</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    `;
+    lucide.createIcons();
+}
+
+async function handleTransferSubmit(e) {
+    e.preventDefault();
+    if (systemSettings.maintenanceMode) {
+        Swal.fire('Fitur Dibatasi', 'Sistem sedang dalam masa pemeliharaan.', 'warning');
+        return;
+    }
+
+    const targetAccountNo = document.getElementById('transferTarget').value.trim();
+    const amount = parseInt(document.getElementById('transferAmount').value);
+    const note = document.getElementById('transferNote').value.trim() || 'Transfer antar nasabah BNR';
+
+    if (targetAccountNo === currentUser.accountNumber) {
+        Swal.fire('Transaksi Gagal', 'Tidak dapat melakukan transfer ke rekening sendiri.', 'error');
+        return;
+    }
+
+    if (amount < systemSettings.minimumTransfer || amount > systemSettings.maximumTransfer) {
+        Swal.fire('Nominal Luar Batas', `Minimum Rp ${systemSettings.minimumTransfer.toLocaleString()} dan Maksimum Rp ${systemSettings.maximumTransfer.toLocaleString()}`, 'warning');
+        return;
+    }
+
+    Swal.fire({
+        title: 'Verifikasi Penerima...',
+        allowOutsideClick: false,
+        didOpen: () => Swal.showLoading()
+    });
+
+    try {
+        const lookupRes = await window.bnrApi.lookupAccount(targetAccountNo);
+        const receiverName = lookupRes.ownerName;
+
+        Swal.fire({
+            title: 'Konfirmasi Transfer',
+            html: `
+                <div class="text-left text-xs space-y-2 bg-slate-50 dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700">
+                    <div class="flex justify-between">
+                        <span class="text-slate-500">Penerima:</span>
+                        <strong class="text-slate-800 dark:text-white">${receiverName}</strong>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-slate-500">Nomor Rekening:</span>
+                        <strong class="text-slate-800 dark:text-white font-mono">${targetAccountNo}</strong>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-slate-500">Nominal:</span>
+                        <strong class="text-emerald-600 dark:text-emerald-400 font-mono">${formatCurrency(amount)}</strong>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-slate-500">Biaya Layanan:</span>
+                        <strong class="text-slate-700 dark:text-slate-300 font-mono">${formatCurrency(systemSettings.transferFee)}</strong>
+                    </div>
+                </div>
+            `,
+            icon: 'info',
+            showCancelButton: true,
+            confirmButtonColor: '#CC0000',
+            confirmButtonText: 'Kirim Sekarang',
+            cancelButtonText: 'Batal'
+        }).then(async (result) => {
+            if (result.isConfirmed) {
+                Swal.showLoading();
+                try {
+                    const res = await window.bnrApi.transfer(targetAccountNo, amount, note);
+                    currentAccount.balance = res.newBalance;
+                    openReceiptModal(res.transaction);
+                } catch (transferErr) {
+                    Swal.fire('Transfer Gagal', transferErr.message, 'error');
+                }
+            }
+        });
+    } catch (err) {
+        Swal.fire('Rekening Tidak Ditemukan', err.message || 'Nomor rekening tujuan tidak valid.', 'error');
+    }
+}
+
+function openReceiptModal(tx) {
+    Swal.fire({
+        title: 'Transfer Berhasil',
+        html: `
+            <div id="digitalReceiptModal" class="text-left text-xs space-y-3 p-4 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 font-mono">
+                <div class="text-center pb-2 border-b border-slate-200 dark:border-slate-700">
+                    <h4 class="font-extrabold text-sm text-slate-800 dark:text-white">BANK NUSANTARA ROBLOX</h4>
+                    <p class="text-[10px] text-slate-400">Bukti Transaksi Transfer Elektronik</p>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-slate-500">ID Transaksi:</span>
+                    <strong class="text-slate-800 dark:text-white">${tx.id}</strong>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-slate-500">Waktu:</span>
+                    <span class="text-slate-800 dark:text-white">${new Date(tx.timestamp).toLocaleString('id-ID')}</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-slate-500">Pengirim:</span>
+                    <span class="text-slate-800 dark:text-white">${tx.senderName}</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-slate-500">Penerima:</span>
+                    <span class="text-slate-800 dark:text-white">${tx.receiverName}</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-slate-500">Nominal:</span>
+                    <strong class="text-emerald-600 dark:text-emerald-400">${formatCurrency(tx.amount)}</strong>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-slate-500">Status:</span>
+                    <strong class="text-emerald-600 uppercase">BERHASIL</strong>
+                </div>
+            </div>
+        `,
+        icon: 'success',
+        confirmButtonColor: '#CC0000',
+        confirmButtonText: 'Tutup'
+    }).then(() => {
+        navigateTo('dashboard');
+    });
+}
+
+// --- MUTATION VIEW ---
+async function renderMutationView() {
+    const contentArea = document.getElementById('contentArea');
+    contentArea.innerHTML = `
+        <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-sm page-fade-enter">
+            <h3 class="text-lg font-bold text-slate-800 dark:text-white mb-4">Mutasi & Riwayat Transaksi</h3>
+            <div id="mutationList" class="space-y-3">
+                <div class="text-center py-8 text-slate-400 text-xs">Memuat data mutasi...</div>
+            </div>
+        </div>
+    `;
+
+    try {
+        const res = await window.bnrApi.getTransactionHistory();
+        const txList = res.transactions || [];
+        const container = document.getElementById('mutationList');
+
+        if (txList.length === 0) {
+            container.innerHTML = `<div class="text-center py-8 text-slate-400 text-xs">Belum ada mutasi transaksi.</div>`;
+            return;
+        }
+
+        container.innerHTML = txList.map(tx => {
+            const isOutgoing = tx.role === 'DEBIT' || tx.type === 'FEE_CHANGE_NAME';
+            const counterparty = isOutgoing ? `Ke: ${tx.receiverName || 'Pengeluaran'}` : `Dari: ${tx.senderName || 'Pemasukan'}`;
+            return `
+                <div class="p-4 bg-slate-50 dark:bg-slate-800/40 rounded-2xl border border-slate-100 dark:border-slate-800 flex justify-between items-center text-xs">
+                    <div>
+                        <p class="font-bold text-slate-800 dark:text-white">${tx.note || (isOutgoing ? 'Transfer Keluar' : 'Transfer Masuk')}</p>
+                        <p class="text-slate-400 text-[11px]">${counterparty}</p>
+                        <span class="text-[10px] text-slate-400 font-mono">${new Date(tx.timestamp).toLocaleString('id-ID')}</span>
+                    </div>
+                    <div class="text-right">
+                        <p class="text-xs font-extrabold ${isOutgoing ? 'text-rose-600' : 'text-emerald-600'}">${isOutgoing ? '-' : '+'}${formatCurrency(tx.amount)}</p>
+                        <span class="text-[10px] text-slate-400 font-mono">${tx.id}</span>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    } catch (err) {
+        console.error('Failed to load mutations:', err);
+    }
+}
+
+// --- QR PAYMENT VIEW ---
+function renderQRView() {
+    const contentArea = document.getElementById('contentArea');
+    contentArea.innerHTML = `
+        <div class="max-w-md mx-auto bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 text-center shadow-sm page-fade-enter">
+            <h3 class="text-lg font-bold text-slate-800 dark:text-white mb-1">BNR Quick Payment QR</h3>
+            <p class="text-xs text-slate-500 dark:text-slate-400 mb-6">Tunjukkan QR ini untuk menerima saldo atau scan QR nasabah lain.</p>
+            
+            <div class="p-6 bg-slate-900 rounded-2xl inline-block mb-6 shadow-inner">
+                <img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${currentUser.accountNumber}" class="w-48 h-48 rounded-lg" alt="QR Code">
+            </div>
+
+            <p class="text-xs font-mono font-bold text-slate-700 dark:text-slate-300 mb-1">${maskAccount(currentUser.accountNumber)}</p>
+            <p class="text-xs text-slate-400 mb-6">${currentUser.name}</p>
+
+            <button onclick="promptSimulatedQRScan()" class="w-full bg-bnr-red hover:bg-bnr-darkred text-white py-3 rounded-xl font-semibold text-xs transition flex items-center justify-center space-x-2">
+                <i data-lucide="scan" class="w-4 h-4"></i>
+                <span>Simulasi Bayar via Kode QR</span>
+            </button>
+        </div>
+    `;
+    lucide.createIcons();
+}
+
+function promptSimulatedQRScan() {
+    Swal.fire({
+        title: 'Scan QR Payment',
+        input: 'text',
+        inputLabel: 'Masukkan Nomor Rekening QR Tujuan',
+        inputPlaceholder: 'Contoh: 1203847291',
+        showCancelButton: true,
+        confirmButtonText: 'Lanjutkan Bayar'
+    }).then((res) => {
+        if (res.isConfirmed && res.value) {
+            navigateTo('transfer');
+            setTimeout(() => {
+                const targetInput = document.getElementById('transferTarget');
+                if (targetInput) targetInput.value = res.value;
+            }, 100);
+        }
+    });
+}
+
+// --- TOP UP VIEW ---
+function renderTopUpView() {
+    const contentArea = document.getElementById('contentArea');
+    contentArea.innerHTML = `
+        <div class="max-w-xl mx-auto bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 sm:p-8 shadow-sm page-fade-enter">
+            <h3 class="text-lg font-bold text-slate-800 dark:text-white mb-1">Pengajuan Top Up Saldo</h3>
+            <p class="text-xs text-slate-500 dark:text-slate-400 mb-6">Kirim permintaan saldo ke pihak Administrator BNR.</p>
+
+            <form onsubmit="handleTopUpRequest(event)" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-2">Nominal Top Up (Rp)</label>
+                    <input type="number" id="topupAmount" required min="10000" placeholder="Minimal Rp 10.000" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-white rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-bnr-red">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-2">Alasan / Catatan Pengajuan</label>
+                    <input type="text" id="topupNote" required placeholder="Contoh: Pembelian Asset Roleplay" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-white rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-bnr-red">
+                </div>
+                <button type="submit" class="w-full bg-slate-900 dark:bg-slate-800 hover:bg-slate-800 text-white font-semibold py-3.5 rounded-xl text-xs transition">Kirim Pengajuan Top Up</button>
+            </form>
+        </div>
+    `;
+}
+
+async function handleTopUpRequest(e) {
+    e.preventDefault();
+    const amount = parseInt(document.getElementById('topupAmount').value);
+    const note = document.getElementById('topupNote').value.trim();
+
+    try {
+        await window.bnrApi.requestTopUp(amount, note);
+        Swal.fire('Pengajuan Terkirim', 'Permintaan Top Up Anda menunggu persetujuan Admin BNR.', 'success');
+        navigateTo('dashboard');
+    } catch (err) {
+        Swal.fire('Gagal Mengajukan', err.message, 'error');
+    }
+}
+
+// --- VIRTUAL CARD VIEW ---
+function renderVirtualCardView() {
+    const contentArea = document.getElementById('contentArea');
+    const logoSrc = (window.BNR_CONFIG && window.BNR_CONFIG.branding && window.BNR_CONFIG.branding.logoUrl) || '/assets/images/bnr-logo.svg';
+
+    contentArea.innerHTML = `
+        <div class="max-w-md mx-auto space-y-6 page-fade-enter">
+            <div class="bnr-card-gradient rounded-3xl p-6 text-white shadow-2xl relative overflow-hidden border border-red-400/30">
+                <div class="flex justify-between items-start mb-8">
+                    <div>
+                        <h4 class="font-extrabold text-lg tracking-wider">BNR VIRTUAL</h4>
+                        <p class="text-[10px] text-red-200 tracking-widest uppercase">Roblox Exclusive Banking</p>
+                    </div>
+                    <img src="${logoSrc}" class="bnr-brand-logo w-10 h-10 object-contain" alt="Logo">
+                </div>
+
+                <div class="mb-6">
+                    <p class="text-[10px] text-red-200 uppercase tracking-wider mb-1">Nomor Kartu Virtual</p>
+                    <p class="text-xl font-mono tracking-widest">4800 •••• •••• ${currentUser.accountNumber.substring(6)}</p>
+                </div>
+
+                <div class="flex justify-between items-end">
+                    <div>
+                        <p class="text-[9px] text-red-200 uppercase">Pemegang Kartu</p>
+                        <p class="text-xs font-bold uppercase tracking-wider">${currentUser.name}</p>
+                    </div>
+                    <div>
+                        <p class="text-[9px] text-red-200 uppercase">Berlaku Hingga</p>
+                        <p class="text-xs font-mono font-bold">12/30</p>
+                    </div>
+                </div>
+            </div>
+            
+            <p class="text-center text-xs text-slate-400">Kartu virtual ini hanya berfungsi sebagai identitas keanggotaan roleplay resmi BNR.</p>
+        </div>
+    `;
+}
+
+// --- NOTIFICATIONS VIEW ---
+async function renderNotificationsView() {
+    const contentArea = document.getElementById('contentArea');
+    contentArea.innerHTML = `
+        <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-sm page-fade-enter">
+            <h3 class="text-lg font-bold text-slate-800 dark:text-white mb-4">Pusat Notifikasi Realtime</h3>
+            <div id="notifContainer" class="space-y-3">
+                <div class="text-center py-6 text-slate-400 text-xs">Memuat notifikasi...</div>
+            </div>
+        </div>
+    `;
+
+    try {
+        // Automatically mark as read to immediately clear red dot badge!
+        window.bnrApi.markNotificationsRead().catch(() => {});
+        const badge = document.getElementById('unreadNotifBadge');
+        if (badge) badge.classList.add('hidden');
+
+        const res = await window.bnrApi.getNotifications();
+        const notifs = res.notifications || [];
+        const container = document.getElementById('notifContainer');
+
+        if (notifs.length === 0) {
+            container.innerHTML = `<div class="text-center py-6 text-slate-400 text-xs">Belum ada notifikasi.</div>`;
+            return;
+        }
+
+        container.innerHTML = notifs.map(n => `
+            <div class="p-4 bg-slate-50 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-800 rounded-2xl">
+                <h5 class="text-xs font-bold text-slate-800 dark:text-white">${n.title}</h5>
+                <p class="text-xs text-slate-600 dark:text-slate-300 mt-1">${n.message}</p>
+                <span class="text-[10px] text-slate-400 font-mono mt-2 block">${new Date(n.timestamp).toLocaleString('id-ID')}</span>
+            </div>
+        `).join('');
+    } catch (err) {
+        console.error('Failed to load notifications:', err);
+    }
+}
+
+// --- PROFILE & NAME CHANGE VIEW ---
+function renderProfileView() {
+    const contentArea = document.getElementById('contentArea');
+    contentArea.innerHTML = `
+        <div class="max-w-2xl mx-auto bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 sm:p-8 shadow-sm space-y-6 page-fade-enter">
+            <div class="flex items-center space-x-4 pb-6 border-b border-slate-200 dark:border-slate-800">
+                <div class="w-16 h-16 rounded-2xl bg-bnr-red text-white flex items-center justify-center font-extrabold text-2xl uppercase">
+                    ${currentUser.name.charAt(0)}
+                </div>
+                <div>
+                    <h3 class="text-xl font-extrabold text-slate-800 dark:text-white">${currentUser.name}</h3>
+                    <p class="text-xs text-slate-500 dark:text-slate-400 font-mono">@${currentUser.username} • ${currentUser.role}</p>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+                <div class="p-4 bg-slate-50 dark:bg-slate-800/40 rounded-2xl border border-slate-200 dark:border-slate-800">
+                    <span class="text-slate-400 block mb-1">Nomor Rekening Terikat</span>
+                    <strong class="font-mono text-slate-800 dark:text-white text-sm">${currentUser.accountNumber}</strong>
+                </div>
+                <div class="p-4 bg-slate-50 dark:bg-slate-800/40 rounded-2xl border border-slate-200 dark:border-slate-800">
+                    <span class="text-slate-400 block mb-1">Status Keanggotaan</span>
+                    <strong class="text-emerald-600 uppercase">AKTIF TERVERIFIKASI</strong>
+                </div>
+            </div>
+
+            <div class="border-t border-slate-200 dark:border-slate-800 pt-6">
+                <h4 class="font-bold text-sm text-slate-800 dark:text-white mb-2">Layanan Perubahan Identitas</h4>
+                <p class="text-xs text-slate-500 mb-4">Penggantian nama terdaftar dikenakan biaya administrasi resmi BNR sebesar <strong>${formatCurrency(systemSettings.profileChangeFee)}</strong>.</p>
+                <button onclick="handleChangeNamePrompt()" class="px-5 py-2.5 bg-slate-900 dark:bg-slate-800 hover:bg-slate-800 text-white rounded-xl text-xs font-semibold transition">
+                    Ganti Nama Rekening
+                </button>
+            </div>
+        </div>
+    `;
+}
+
+async function handleChangeNamePrompt() {
+    const { value: newName } = await Swal.fire({
+        title: 'Ganti Nama Rekening',
+        input: 'text',
+        inputLabel: `Biaya: ${formatCurrency(systemSettings.profileChangeFee)} (Dipotong dari Saldo)`,
+        inputValue: currentUser.name,
+        showCancelButton: true,
+        confirmButtonColor: '#CC0000',
+        confirmButtonText: 'Konfirmasi Ganti',
+        inputValidator: (value) => {
+            if (!value) return 'Nama tidak boleh kosong!';
+            if (value === currentUser.name) return 'Nama harus berbeda dari nama sekarang!';
+        }
+    });
+
+    if (newName) {
+        try {
+            const res = await window.bnrApi.changeName(newName.trim());
+            currentUser.name = res.newName;
+            currentAccount.balance = res.newBalance;
+            Swal.fire('Berhasil Diperbarui', res.message, 'success');
+            renderSidebarAndNav();
+            renderProfileView();
+        } catch (err) {
+            Swal.fire('Gagal Ganti Nama', err.message, 'error');
+        }
+    }
+}
+
+// --- SUPER ADMIN PANEL VIEW ---
+function renderAdminPanelView() {
+    const contentArea = document.getElementById('contentArea');
+
+    contentArea.innerHTML = `
+        <div class="space-y-6 page-fade-enter">
+            <!-- Header Status Admin -->
+            <div class="bg-slate-900 text-white p-6 rounded-3xl flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <div>
+                    <span class="text-xs font-bold text-red-400 tracking-wider uppercase">Hak Akses Super Admin</span>
+                    <h3 class="text-2xl font-extrabold mt-0.5">Kontrol Penuh Sistem BNR</h3>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <button onclick="toggleMaintenanceMode()" class="px-4 py-2 rounded-xl text-xs font-bold transition ${systemSettings.maintenanceMode ? 'bg-rose-600' : 'bg-emerald-600'}">
+                        Mode Maintenance: ${systemSettings.maintenanceMode ? 'AKTIF' : 'NONAKTIF'}
+                    </button>
+                </div>
+            </div>
+
+            <!-- Tab Navigasi Admin -->
+            <div class="flex space-x-2 border-b border-slate-200 dark:border-slate-800 pb-2 text-xs font-bold">
+                <button onclick="renderAdminOverview()" class="px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl">Overview</button>
+                <button onclick="renderAdminUsers()" class="px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl">Kelola User</button>
+                <button onclick="renderAdminTopUps()" class="px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl">Persetujuan Top Up</button>
+                <button onclick="renderAdminLogs()" class="px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl">Audit Log</button>
+            </div>
+
+            <!-- Workspace Konten Dinamis Admin -->
+            <div id="adminWorkspace">
+                <!-- Dimuat oleh sub-fungsi admin -->
+            </div>
+        </div>
+    `;
+    renderAdminOverview();
+}
+
+async function renderAdminOverview() {
+    const ws = document.getElementById('adminWorkspace');
+    ws.innerHTML = `<div class="text-center py-8 text-xs text-slate-400">Memuat overview sistem...</div>`;
+
+    try {
+        const res = await window.bnrApi.adminGetOverview();
+        const stats = res.stats;
+
+        ws.innerHTML = `
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6">
+                    <span class="text-xs text-slate-400 font-bold uppercase">Total Nasabah</span>
+                    <h3 class="text-3xl font-extrabold text-slate-800 dark:text-white mt-1">${stats.totalUsers}</h3>
+                    <p class="text-[11px] text-emerald-600 mt-1">${stats.activeUsers} Akun Aktif</p>
+                </div>
+                <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6">
+                    <span class="text-xs text-slate-400 font-bold uppercase">Total Transaksi</span>
+                    <h3 class="text-3xl font-extrabold text-slate-800 dark:text-white mt-1">${stats.totalTransactions}</h3>
+                    <p class="text-[11px] text-slate-400 mt-1">Diproses Server</p>
+                </div>
+                <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6">
+                    <span class="text-xs text-slate-400 font-bold uppercase">Total Peredaran Saldo</span>
+                    <h3 class="text-2xl font-extrabold text-emerald-600 mt-1 truncate">${formatCurrency(stats.totalBalance)}</h3>
+                    <p class="text-[11px] text-slate-400 mt-1">Saldo Nasabah Terdaftar</p>
+                </div>
+            </div>
+        `;
+    } catch (err) {
+        ws.innerHTML = `<div class="text-center py-6 text-rose-500 text-xs">${err.message}</div>`;
+    }
+}
+
+async function renderAdminUsers() {
+    const ws = document.getElementById('adminWorkspace');
+    ws.innerHTML = `
+        <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 space-y-4">
+            <div class="flex justify-between items-center">
+                <h4 class="font-bold text-sm text-slate-800 dark:text-white">Daftar Nasabah BNR</h4>
+                <button onclick="promptCreateNewAccount()" class="px-3 py-1.5 bg-bnr-red text-white rounded-xl text-xs font-semibold">+ Buat Akun Baru</button>
+            </div>
+            <div id="adminUserTable" class="overflow-x-auto text-xs">Memuat nasabah...</div>
+        </div>
+    `;
+
+    try {
+        const res = await window.bnrApi.adminGetUsers();
+        const users = res.users || [];
+        const container = document.getElementById('adminUserTable');
+
+        container.innerHTML = `
+            <table class="w-full text-left">
+                <thead class="border-b border-slate-200 dark:border-slate-800 text-slate-400">
+                    <tr>
+                        <th class="pb-2">User</th>
+                        <th class="pb-2">Rekening</th>
+                        <th class="pb-2">Saldo</th>
+                        <th class="pb-2">Status</th>
+                        <th class="pb-2 text-right">Aksi</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
+                    ${users.map(u => `
+                        <tr>
+                            <td class="py-2.5 font-bold text-slate-800 dark:text-white">${u.name} (@${u.username})</td>
+                            <td class="py-2.5 font-mono text-slate-500">${u.accountNumber}</td>
+                            <td class="py-2.5 font-mono text-emerald-600 font-bold">${formatCurrency(u.balance)}</td>
+                            <td class="py-2.5">${u.status}</td>
+                            <td class="py-2.5 text-right space-x-1">
+                                <button onclick="promptEditBalance('${u.accountNumber}')" class="px-2 py-1 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 rounded text-[10px]">Edit Saldo</button>
+                                <button onclick="toggleUserStatus('${u.username}', '${u.status}')" class="px-2 py-1 ${u.status === 'ACTIVE' ? 'bg-rose-50 text-rose-600' : 'bg-emerald-50 text-emerald-600'} rounded text-[10px]">
+                                    ${u.status === 'ACTIVE' ? 'Suspend' : 'Aktifkan'}
+                                </button>
+                            </td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        `;
+    } catch (err) {
+        console.error(err);
+    }
+}
+
+async function promptCreateNewAccount() {
+    const { value: formValues } = await Swal.fire({
+        title: 'Buat Nasabah Baru',
+        html: `
+            <div class="space-y-3 text-left text-xs">
+                <div>
+                    <label class="block mb-1 font-bold">Nama Nasabah:</label>
+                    <input id="swalName" class="swal2-input !m-0 !w-full !text-xs" placeholder="Nama Lengkap">
+                </div>
+                <div>
+                    <label class="block mb-1 font-bold">Username Roblox:</label>
+                    <input id="swalUsername" class="swal2-input !m-0 !w-full !text-xs" placeholder="username">
+                </div>
+                <div>
+                    <label class="block mb-1 font-bold">Password:</label>
+                    <input id="swalPassword" type="password" class="swal2-input !m-0 !w-full !text-xs" placeholder="Password">
+                </div>
+                <div>
+                    <label class="block mb-1 font-bold">Saldo Awal (Rp):</label>
+                    <input id="swalBalance" type="number" class="swal2-input !m-0 !w-full !text-xs" value="0">
+                </div>
+            </div>
+        `,
+        focusConfirm: false,
+        showCancelButton: true,
+        confirmButtonColor: '#CC0000',
+        confirmButtonText: 'Buat Akun',
+        preConfirm: () => {
+            return {
+                name: document.getElementById('swalName').value.trim(),
+                username: document.getElementById('swalUsername').value.trim(),
+                password: document.getElementById('swalPassword').value,
+                initialBalance: document.getElementById('swalBalance').value
+            };
+        }
+    });
+
+    if (formValues && formValues.name && formValues.username && formValues.password) {
+        try {
+            const res = await window.bnrApi.adminCreateUser(formValues);
+            Swal.fire('Berhasil', res.message, 'success');
+            renderAdminUsers();
+        } catch (err) {
+            Swal.fire('Gagal Membuat Akun', err.message, 'error');
+        }
+    }
+}
+
+async function promptEditBalance(accountNo) {
+    const { value: amount } = await Swal.fire({
+        title: 'Penyesuaian Saldo Admin',
+        input: 'number',
+        inputPlaceholder: 'Masukkan saldo baru (Rp)',
+        showCancelButton: true,
+        confirmButtonColor: '#CC0000',
+        confirmButtonText: 'Simpan Saldo'
+    });
+
+    if (amount !== undefined && amount !== '') {
+        try {
+            const res = await window.bnrApi.adminAdjustBalance(accountNo, amount, 'Penyesuaian Manual Admin');
+            Swal.fire('Saldo Diperbarui', res.message, 'success');
+            renderAdminUsers();
+        } catch (err) {
+            Swal.fire('Gagal Update Saldo', err.message, 'error');
+        }
+    }
+}
+
+async function toggleUserStatus(username, currentStatus) {
+    const nextStatus = currentStatus === 'ACTIVE' ? 'SUSPENDED' : 'ACTIVE';
+    try {
+        const res = await window.bnrApi.adminToggleUserStatus(username, nextStatus);
+        Swal.fire('Status Diperbarui', res.message, 'success');
+        renderAdminUsers();
+    } catch (err) {
+        Swal.fire('Gagal', err.message, 'error');
+    }
+}
+
+async function renderAdminTopUps() {
+    const ws = document.getElementById('adminWorkspace');
+    ws.innerHTML = `<div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6"><h4 class="font-bold text-sm text-slate-800 dark:text-white mb-4">Persetujuan Top Up</h4><div id="topupRequestsList">Memuat...</div></div>`;
+
+    try {
+        const res = await window.bnrApi.adminGetTopUps();
+        const reqs = res.requests || [];
+        const container = document.getElementById('topupRequestsList');
+
+        if (reqs.length === 0) {
+            container.innerHTML = `<p class="text-xs text-slate-400">Tidak ada pengajuan pending.</p>`;
+            return;
+        }
+
+        container.innerHTML = reqs.map(r => `
+            <div class="flex items-center justify-between p-3 border-b border-slate-100 dark:border-slate-800 text-xs">
+                <div>
+                    <p class="font-bold text-slate-800 dark:text-white">${r.name} (@${r.username})</p>
+                    <p class="text-slate-500">${r.note} — <strong class="text-emerald-600">${formatCurrency(r.amount)}</strong></p>
+                </div>
+                <div class="space-x-1">
+                    <button onclick="approveTopUp('${r.id}')" class="px-3 py-1 bg-emerald-600 text-white rounded">Setujui</button>
+                </div>
+            </div>
+        `).join('');
+    } catch (err) {
+        console.error(err);
+    }
+}
+
+async function approveTopUp(requestId) {
+    try {
+        const res = await window.bnrApi.adminApproveTopUp(requestId);
+        Swal.fire('Disetujui', res.message, 'success');
+        renderAdminTopUps();
+    } catch (err) {
+        Swal.fire('Gagal', err.message, 'error');
+    }
+}
+
+async function renderAdminLogs() {
+    const ws = document.getElementById('adminWorkspace');
+    ws.innerHTML = `<div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6"><h4 class="font-bold text-sm text-slate-800 dark:text-white mb-4">Audit Log Sistem</h4><div id="auditLogsContainer" class="space-y-2 text-xs font-mono">Memuat...</div></div>`;
+
+    try {
+        const res = await window.bnrApi.adminGetAuditLogs();
+        const logs = res.logs || [];
+        const container = document.getElementById('auditLogsContainer');
+
+        if (logs.length === 0) {
+            container.innerHTML = `Log kosong.`;
+            return;
+        }
+
+        container.innerHTML = logs.map(l => `
+            <div class="p-2 bg-slate-50 dark:bg-slate-800 rounded border border-slate-200 dark:border-slate-700">
+                <span class="text-slate-400">[${new Date(l.timestamp).toLocaleString('id-ID')}]</span>
+                <strong class="text-slate-800 dark:text-white">@${l.username}</strong>: ${l.action} — ${l.details}
+            </div>
+        `).join('');
+    } catch (err) {
+        console.error(err);
+    }
+}
+
+async function toggleMaintenanceMode() {
+    const nextMode = !systemSettings.maintenanceMode;
+    try {
+        const res = await window.bnrApi.adminToggleMaintenance(nextMode);
+        systemSettings.maintenanceMode = nextMode;
+        Swal.fire('Mode Diubah', res.message, 'success');
+        renderAdminPanelView();
+    } catch (err) {
+        Swal.fire('Gagal Mengubah Mode', err.message, 'error');
+    }
+}
+
+// 6. BACKGROUND POLLING FOR NOTIFICATIONS
+function startBackgroundPolling() {
+    checkNotifications();
+    setInterval(checkNotifications, 25000);
+}
+
+async function checkNotifications() {
+    if (!window.bnrApi.isAuthenticated()) return;
+    try {
+        const res = await window.bnrApi.getNotifications();
+        const badge = document.getElementById('unreadNotifBadge');
+        if (badge) {
+            if (res.unreadCount > 0) {
+                badge.classList.remove('hidden');
+            } else {
+                badge.classList.add('hidden');
+            }
+        }
+    } catch {
+        // Silent fail
+    }
+}

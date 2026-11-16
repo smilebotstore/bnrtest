@@ -9,58 +9,7 @@
   status = 200
   force = true
 
-# Clean URL Page Redirects
-[[redirects]]
-  from = "/login"
-  to = "/pages/login.html"
-  status = 200
-
-[[redirects]]
-  from = "/dashboard"
-  to = "/pages/dashboard.html"
-  status = 200
-
-[[redirects]]
-  from = "/transfer"
-  to = "/pages/transfer.html"
-  status = 200
-
-[[redirects]]
-  from = "/mutasi"
-  to = "/pages/mutasi.html"
-  status = 200
-
-[[redirects]]
-  from = "/qris"
-  to = "/pages/qris.html"
-  status = 200
-
-[[redirects]]
-  from = "/topup"
-  to = "/pages/topup.html"
-  status = 200
-
-[[redirects]]
-  from = "/kartu"
-  to = "/pages/kartu.html"
-  status = 200
-
-[[redirects]]
-  from = "/notifikasi"
-  to = "/pages/notifikasi.html"
-  status = 200
-
-[[redirects]]
-  from = "/profil"
-  to = "/pages/profil.html"
-  status = 200
-
-[[redirects]]
-  from = "/admin"
-  to = "/pages/admin.html"
-  status = 200
-
-# Single Page Fallback
+# Single Page App & Clean URL Routing (Keeps /dashboard, /transfer clean without .html)
 [[redirects]]
   from = "/*"
   to = "/index.html"

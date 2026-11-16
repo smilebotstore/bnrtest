@@ -53,17 +53,29 @@ app.post('/api/admin/settings/maintenance', verifyToken, requireAdmin, (req, res
 const publicPath = path.join(__dirname, '..', 'public');
 app.use(express.static(publicPath));
 
-// Clean URL routing for pages
-app.get('/login', (req, res) => res.sendFile(path.join(publicPath, 'pages', 'login.html')));
-app.get('/dashboard', (req, res) => res.sendFile(path.join(publicPath, 'pages', 'dashboard.html')));
-app.get('/transfer', (req, res) => res.sendFile(path.join(publicPath, 'pages', 'transfer.html')));
-app.get('/mutasi', (req, res) => res.sendFile(path.join(publicPath, 'pages', 'mutasi.html')));
-app.get('/qris', (req, res) => res.sendFile(path.join(publicPath, 'pages', 'qris.html')));
-app.get('/topup', (req, res) => res.sendFile(path.join(publicPath, 'pages', 'topup.html')));
-app.get('/kartu', (req, res) => res.sendFile(path.join(publicPath, 'pages', 'kartu.html')));
-app.get('/notifikasi', (req, res) => res.sendFile(path.join(publicPath, 'pages', 'notifikasi.html')));
-app.get('/profil', (req, res) => res.sendFile(path.join(publicPath, 'pages', 'profil.html')));
-app.get('/admin', (req, res) => res.sendFile(path.join(publicPath, 'pages', 'admin.html')));
+// Clean SPA routing for pages (without .html in the URL)
+const cleanRoutes = [
+    '/',
+    '/login',
+    '/dashboard',
+    '/transfer',
+    '/mutasi',
+    '/mutation',
+    '/qris',
+    '/qr',
+    '/topup',
+    '/kartu',
+    '/virtualcard',
+    '/notifikasi',
+    '/notifications',
+    '/profil',
+    '/profile',
+    '/admin'
+];
+
+app.get(cleanRoutes, (req, res) => {
+    res.sendFile(path.join(publicPath, 'index.html'));
+});
 
 // Fallback route
 app.get('*', (req, res) => {
