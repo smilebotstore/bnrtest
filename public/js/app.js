@@ -155,6 +155,15 @@ function showAuthView() {
     document.getElementById('mainApp').classList.add('hidden');
     document.getElementById('authScreen').classList.remove('hidden');
 
+    // Prefill username if "remember me" was saved
+    const savedUser = localStorage.getItem('bnr_remember_username');
+    const uInput = document.getElementById('loginUsername');
+    const remCheck = document.getElementById('rememberMe');
+    if (savedUser && uInput) {
+        uInput.value = savedUser;
+        if (remCheck) remCheck.checked = true;
+    }
+
     if (window.location.pathname !== '/login') {
         window.history.pushState(null, '', '/login');
     }
@@ -212,6 +221,14 @@ async function handleLogin(e) {
     try {
         const res = await window.bnrApi.login(username, password);
         currentUser = res.user;
+
+        // Handle remember me preference
+        const rememberMe = document.getElementById('rememberMe')?.checked;
+        if (rememberMe) {
+            localStorage.setItem('bnr_remember_username', username);
+        } else {
+            localStorage.removeItem('bnr_remember_username');
+        }
         
         // Fetch full account details
         const accRes = await window.bnrApi.getAccountDetails();
@@ -1083,26 +1100,35 @@ async function renderAdminOverview() {
     try {
         const res = await window.bnrApi.adminGetOverview();
         const stats = res.stats;
+        const formattedBalance = formatCurrency(stats.totalBalance).replace(/\u00A0/g, ' ');
 
         ws.innerHTML = `
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6">
-                    <span class="text-xs text-slate-400 font-bold uppercase">Total Nasabah</span>
-                    <h3 class="text-3xl font-extrabold text-slate-800 dark:text-white mt-1">${stats.totalUsers}</h3>
-                    <p class="text-[11px] text-emerald-600 mt-1">${stats.activeUsers} Akun Aktif</p>
+            <div class="space-y-4">
+                <!-- 2 Kartu Statistik Atas (Total Nasabah & Total Transaksi) -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-sm">
+                        <span class="text-xs text-slate-400 font-bold uppercase tracking-wider">Total Nasabah</span>
+                        <h3 class="text-3xl font-extrabold text-slate-800 dark:text-white mt-1">${stats.totalUsers}</h3>
+                        <p class="text-[11px] text-emerald-600 dark:text-emerald-400 mt-1 font-semibold">${stats.activeUsers} Akun Aktif</p>
+                    </div>
+                    <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-sm">
+                        <span class="text-xs text-slate-400 font-bold uppercase tracking-wider">Total Transaksi</span>
+                        <h3 class="text-3xl font-extrabold text-slate-800 dark:text-white mt-1">${stats.totalTransactions}</h3>
+                        <p class="text-[11px] text-slate-400 mt-1 font-semibold">Diproses Server</p>
+                    </div>
                 </div>
-                <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6">
-                    <span class="text-xs text-slate-400 font-bold uppercase">Total Transaksi</span>
-                    <h3 class="text-3xl font-extrabold text-slate-800 dark:text-white mt-1">${stats.totalTransactions}</h3>
-                    <p class="text-[11px] text-slate-400 mt-1">Diproses Server</p>
-                </div>
-                <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6">
-                    <span class="text-xs text-slate-400 font-bold uppercase">Total Peredaran Saldo</span>
-                    <h3 class="text-2xl font-extrabold text-emerald-600 mt-1 truncate">${formatCurrency(stats.totalBalance)}</h3>
-                    <p class="text-[11px] text-slate-400 mt-1">Saldo Nasabah Terdaftar</p>
+
+                <!-- Kartu Bawah: Total Peredaran Saldo (Memanjang Penuh & Responsif Mobile) -->
+                <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 sm:p-7 shadow-sm">
+                    <span class="text-xs text-slate-400 font-bold uppercase tracking-wider">Total Peredaran Saldo</span>
+                    <h3 class="text-2xl sm:text-3xl md:text-4xl font-extrabold text-emerald-600 dark:text-emerald-400 mt-2 break-all sm:break-normal leading-tight tracking-tight">
+                        ${formattedBalance}
+                    </h3>
+                    <p class="text-[11px] sm:text-xs text-slate-400 mt-2 font-medium">Saldo Nasabah Terdaftar</p>
                 </div>
             </div>
         `;
+        lucide.createIcons();
     } catch (err) {
         ws.innerHTML = `<div class="text-center py-6 text-rose-500 text-xs">${err.message}</div>`;
     }
