@@ -28,7 +28,7 @@ app.get('/api/config/public', (req, res) => authController.getPublicConfig(req, 
 
 // ==================== PROTECTED USER ROUTES ====================
 app.get('/api/auth/me', verifyToken, (req, res) => authController.getMe(req, res));
-app.post('/api/auth/logout', verifyToken, (req, res) => authController.logout(req, res));
+app.post('/api/auth/logout', (req, res) => authController.logout(req, res));
 app.get('/api/account/details', verifyToken, (req, res) => accountController.getDetails(req, res));
 app.post('/api/account/change-name', verifyToken, (req, res) => accountController.changeName(req, res));
 app.post('/api/account/topup-request', verifyToken, (req, res) => accountController.requestTopUp(req, res));

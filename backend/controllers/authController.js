@@ -144,7 +144,20 @@ class AuthController {
     async logout(req, res) {
         try {
             const clientInfo = parseClientInfo(req);
-            const username = req.user?.username;
+            let username = req.user?.username || req.body?.username;
+
+            // If not available, decode from Authorization Bearer token header if present
+            if (!username && req.headers['authorization']) {
+                const parts = req.headers['authorization'].split(' ');
+                if (parts.length === 2 && parts[0] === 'Bearer') {
+                    try {
+                        const decoded = jwt.decode(parts[1]);
+                        if (decoded && decoded.username) {
+                            username = decoded.username;
+                        }
+                    } catch {}
+                }
+            }
 
             if (username) {
                 const user = await db.get(`users/${username}`) || {};
@@ -168,18 +181,18 @@ class AuthController {
                             os: clientInfo.os,
                             timezone: clientInfo.timezone,
                             logoutTime: clientInfo.loginTime,
-                            role: user.role || req.user.role,
-                            name: user.name,
-                            accountNumber: user.accountNumber
+                            role: user.role || 'USER',
+                            name: user.name || username,
+                            accountNumber: user.accountNumber || '-'
                         }
                     );
 
                     // Discord Audit Webhook Notification (Plain Text, Waktu WIB)
                     discordService.sendAuditLogoutLog({
                         username,
-                        name: user.name,
-                        role: user.role || req.user.role,
-                        accountNumber: user.accountNumber,
+                        name: user.name || username,
+                        role: user.role || 'USER',
+                        accountNumber: user.accountNumber || '-',
                         ip: clientInfo.ip,
                         browser: clientInfo.browser,
                         os: clientInfo.os

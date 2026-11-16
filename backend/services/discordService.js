@@ -29,11 +29,17 @@ class DiscordService {
         };
 
         try {
-            await fetch(webhookUrl, {
+            const resp = await fetch(webhookUrl, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
             });
+            if (!resp.ok) {
+                const errText = await resp.text();
+                console.error(`[Discord Transaction Log Failed] HTTP ${resp.status}: ${errText}`);
+            } else {
+                console.log(`[Discord Transaction Log] Successfully sent for ${txId}`);
+            }
         } catch (err) {
             console.error('[Discord Transaction Log Error]', err.message);
         }
@@ -52,11 +58,17 @@ class DiscordService {
         };
 
         try {
-            await fetch(auditWebhookUrl, {
+            const resp = await fetch(auditWebhookUrl, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
             });
+            if (!resp.ok) {
+                const errText = await resp.text();
+                console.error(`[Discord Audit Login Failed] HTTP ${resp.status}: ${errText}`);
+            } else {
+                console.log(`[Discord Audit Login] Successfully sent for @${username}`);
+            }
         } catch (err) {
             console.error('[Discord Audit Login Error]', err.message);
         }
@@ -75,11 +87,17 @@ class DiscordService {
         };
 
         try {
-            await fetch(auditWebhookUrl, {
+            const resp = await fetch(auditWebhookUrl, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
             });
+            if (!resp.ok) {
+                const errText = await resp.text();
+                console.error(`[Discord Audit Logout Failed] HTTP ${resp.status}: ${errText}`);
+            } else {
+                console.log(`[Discord Audit Logout] Successfully sent for @${username}`);
+            }
         } catch (err) {
             console.error('[Discord Audit Logout Error]', err.message);
         }
