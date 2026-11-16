@@ -1,0 +1,94 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
+  <defs>
+    <!-- Background Gradient -->
+    <linearGradient id="shieldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#990000" />
+      <stop offset="50%" stop-color="#CC0000" />
+      <stop offset="100%" stop-color="#700000" />
+    </linearGradient>
+
+    <!-- Gold Luxury Accent Gradient -->
+    <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FDE68A" />
+      <stop offset="50%" stop-color="#F59E0B" />
+      <stop offset="100%" stop-color="#D97706" />
+    </linearGradient>
+
+    <!-- Inner Plate Gradient -->
+    <linearGradient id="innerPlate" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#1E293B" />
+      <stop offset="100%" stop-color="#0F172A" />
+    </linearGradient>
+
+    <!-- Metallic Glow Filter -->
+    <filter id="goldGlow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="4" stdDeviation="6" flood-color="#000000" flood-opacity="0.6"/>
+    </filter>
+  </defs>
+
+  <!-- Outer Rounded Shield -->
+  <path d="M256 24 C360 24 440 60 456 160 C472 268 400 392 256 488 C112 392 40 268 56 160 C72 60 152 24 256 24 Z" 
+        fill="url(#shieldGrad)" 
+        stroke="url(#goldGrad)" 
+        stroke-width="10" 
+        filter="url(#goldGlow)" />
+
+  <!-- Inner Dark Core Shield -->
+  <path d="M256 50 C340 50 404 80 418 165 C430 252 372 355 256 438 C140 355 82 252 94 165 C108 80 172 50 256 50 Z" 
+        fill="url(#innerPlate)" 
+        stroke="rgba(245, 158, 11, 0.4)" 
+        stroke-width="3" />
+
+  <!-- Geometric Roblox-Bank Pillars & Vault Crest (Centerpiece) -->
+  <!-- Top Vault Arch / Pediment -->
+  <path d="M190 150 L256 105 L322 150 Z" fill="url(#goldGrad)" />
+  <rect x="180" y="152" width="152" height="8" rx="2" fill="url(#goldGrad)" />
+
+  <!-- 4 Classical Pillars with Roblox Square Chamfer -->
+  <rect x="194" y="166" width="16" height="72" rx="3" fill="url(#goldGrad)" opacity="0.9" />
+  <rect x="226" y="166" width="16" height="72" rx="3" fill="url(#goldGrad)" />
+  <rect x="270" y="166" width="16" height="72" rx="3" fill="url(#goldGrad)" />
+  <rect x="302" y="166" width="16" height="72" rx="3" fill="url(#goldGrad)" opacity="0.9" />
+
+  <!-- Vault Base Pedestal -->
+  <rect x="176" y="242" width="160" height="12" rx="3" fill="url(#goldGrad)" />
+  <rect x="164" y="256" width="184" height="6" rx="2" fill="url(#goldGrad)" opacity="0.8" />
+
+  <!-- Large Bold BNR Modern Typography -->
+  <text x="256" y="340" 
+        font-family="'Plus Jakarta Sans', 'Arial Black', sans-serif" 
+        font-size="74" 
+        font-weight="900" 
+        letter-spacing="6" 
+        fill="#FFFFFF" 
+        text-anchor="middle"
+        filter="url(#goldGlow)">
+    BNR
+  </text>
+
+  <!-- Subtitle Ribbon / Text -->
+  <text x="256" y="375" 
+        font-family="'Plus Jakarta Sans', sans-serif" 
+        font-size="16" 
+        font-weight="700" 
+        letter-spacing="5" 
+        fill="url(#goldGrad)" 
+        text-anchor="middle">
+    BANK NUSANTARA
+  </text>
+
+  <text x="256" y="398" 
+        font-family="'Plus Jakarta Sans', sans-serif" 
+        font-size="13" 
+        font-weight="800" 
+        letter-spacing="6" 
+        fill="#CBD5E1" 
+        text-anchor="middle">
+    ROBLOX
+  </text>
+
+  <!-- Star Emblems -->
+  <path d="M256 420 L259 428 L267 428 L261 433 L263 441 L256 436 L249 441 L251 433 L245 428 L253 428 Z" fill="url(#goldGrad)" />
+  <path d="M228 418 L230 424 L236 424 L231 428 L233 434 L228 430 L223 434 L225 428 L220 424 L226 424 Z" fill="url(#goldGrad)" opacity="0.75" />
+  <path d="M284 418 L286 424 L292 424 L287 428 L289 434 L284 430 L279 434 L281 428 L276 424 L282 424 Z" fill="url(#goldGrad)" opacity="0.75" />
+</svg>

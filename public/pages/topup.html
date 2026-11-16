@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Pengajuan Top Up — BNR</title>
+    
+    <!-- PWA & Theme -->
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#990000">
+    <link rel="icon" href="/assets/images/favicon.svg" type="image/svg+xml">
+
+    <!-- Fonts & Tailwind CSS -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        bnr: {
+                            red: '#CC0000',
+                            darkred: '#800000',
+                            lightred: '#FFEBEE',
+                            accent: '#990000',
+                            dark: '#0F172A',
+                            surface: '#F8FAFC',
+                            card: '#FFFFFF'
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Plus Jakarta Sans', 'sans-serif']
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <!-- Icons & SweetAlert -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="/assets/css/style.css">
+
+    <!-- App Configuration, Theme, API Client & Auth Guard -->
+    <script src="/js/config.js"></script>
+    <script src="/js/theme.js"></script>
+    <script src="/js/api.js"></script>
+    <script src="/js/auth-guard.js"></script>
+</head>
+<body class="bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans antialiased selection:bg-bnr-red selection:text-white min-h-screen">
+
+    <!-- APP SHELL CONTAINER -->
+    <div id="appLayout" class="min-h-screen flex flex-col md:flex-row">
+        
+        <!-- TOP UP CONTENT -->
+        <div class="max-w-2xl mx-auto w-full space-y-6 page-fade-enter">
+            
+            <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 sm:p-8 shadow-sm">
+                <div class="flex items-center space-x-3 mb-6 pb-4 border-b border-slate-100 dark:border-slate-800">
+                    <div class="w-10 h-10 rounded-2xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center">
+                        <i data-lucide="wallet-cards" class="w-5 h-5"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-bold text-base sm:text-lg text-slate-900 dark:text-white">Pengajuan Top Up Saldo</h3>
+                        <p class="text-xs text-slate-400">Isi ulang saldo virtual rekening BNR Anda melalui verifikasi Administrator</p>
+                    </div>
+                </div>
+
+                <form id="topUpForm" onsubmit="handleTopUpSubmit(event)" class="space-y-5">
+                    
+                    <!-- Top Up Amount -->
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-2">
+                            Pilih atau Masukkan Nominal Top Up
+                        </label>
+                        <div class="relative">
+                            <span class="absolute inset-y-0 left-0 flex items-center pl-3.5 text-slate-400 font-bold text-sm">
+                                Rp
+                            </span>
+                            <input type="number" id="topupAmount" required min="10000" step="1000"
+                                   class="w-full bg-slate-50 dark:bg-slate-800/80 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white rounded-xl pl-11 pr-4 py-3 text-sm focus:outline-none focus:border-bnr-red font-mono font-bold" 
+                                   placeholder="Contoh: 100000">
+                        </div>
+
+                        <!-- Quick Nominal Chips -->
+                        <div class="grid grid-cols-3 gap-2 mt-2.5">
+                            <button type="button" onclick="setTopupAmount(50000)" class="py-2 text-xs font-semibold bg-slate-100 dark:bg-slate-800 hover:bg-emerald-600 hover:text-white rounded-xl transition">50.000</button>
+                            <button type="button" onclick="setTopupAmount(100000)" class="py-2 text-xs font-semibold bg-slate-100 dark:bg-slate-800 hover:bg-emerald-600 hover:text-white rounded-xl transition">100.000</button>
+                            <button type="button" onclick="setTopupAmount(250000)" class="py-2 text-xs font-semibold bg-slate-100 dark:bg-slate-800 hover:bg-emerald-600 hover:text-white rounded-xl transition">250.000</button>
+                            <button type="button" onclick="setTopupAmount(500000)" class="py-2 text-xs font-semibold bg-slate-100 dark:bg-slate-800 hover:bg-emerald-600 hover:text-white rounded-xl transition">500.000</button>
+                            <button type="button" onclick="setTopupAmount(1000000)" class="py-2 text-xs font-semibold bg-slate-100 dark:bg-slate-800 hover:bg-emerald-600 hover:text-white rounded-xl transition">1.000.000</button>
+                            <button type="button" onclick="setTopupAmount(5000000)" class="py-2 text-xs font-semibold bg-slate-100 dark:bg-slate-800 hover:bg-emerald-600 hover:text-white rounded-xl transition">5.000.000</button>
+                        </div>
+                    </div>
+
+                    <!-- Note / Payment Ref -->
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-2">
+                            Catatan / Keterangan Pengajuan
+                        </label>
+                        <input type="text" id="topupNote" maxlength="100"
+                               class="w-full bg-slate-50 dark:bg-slate-800/80 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-bnr-red" 
+                               placeholder="Contoh: Top Up Via Discord Staff / Event">
+                    </div>
+
+                    <!-- Instructions Notice -->
+                    <div class="p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/50 flex space-x-3 text-xs text-amber-800 dark:text-amber-300">
+                        <i data-lucide="info" class="w-5 h-5 shrink-0 mt-0.5"></i>
+                        <div>
+                            <p class="font-bold">Informasi Verifikasi Top Up</p>
+                            <p class="text-[11px] mt-0.5 text-amber-700 dark:text-amber-400">Pengajuan top up Anda akan diverifikasi oleh Super Admin. Setelah disetujui, saldo akan otomatis bertambah ke rekening Anda secara realtime.</p>
+                        </div>
+                    </div>
+
+                    <!-- Submit Button -->
+                    <button type="submit" id="btnSubmitTopUp" class="w-full bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white font-semibold py-3.5 rounded-xl shadow-lg transition duration-200 flex items-center justify-center space-x-2">
+                        <span>Ajukan Top Up Sekarang</span>
+                        <i data-lucide="send" class="w-4 h-4"></i>
+                    </button>
+                </form>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Components loader -->
+    <script src="/js/components.js"></script>
+
+    <script>
+        function setTopupAmount(val) {
+            document.getElementById('topupAmount').value = val;
+        }
+
+        async function handleTopUpSubmit(e) {
+            e.preventDefault();
+            const amount = parseInt(document.getElementById('topupAmount').value, 10);
+            const note = document.getElementById('topupNote').value.trim();
+            const btn = document.getElementById('btnSubmitTopUp');
+
+            if (!amount || amount < 10000) {
+                Swal.fire('Perhatian', 'Nominal top up minimal Rp 10.000.', 'warning');
+                return;
+            }
+
+            btn.disabled = true;
+            btn.innerHTML = `<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i><span>Mengirim Pengajuan...</span>`;
+            lucide.createIcons();
+
+            try {
+                await window.bnrApi.requestTopUp(amount, note);
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Pengajuan Terkirim',
+                    text: 'Pengajuan top up berhasil disampaikan. Mohon tunggu verifikasi oleh Administrator BNR.',
+                    confirmButtonColor: '#CC0000'
+                }).then(() => {
+                    window.location.href = '/pages/dashboard.html';
+                });
+            } catch (err) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Gagal Mengajukan Top Up',
+                    text: err.message || 'Terjadi kesalahan sistem.',
+                    confirmButtonColor: '#CC0000'
+                });
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = `<span>Ajukan Top Up Sekarang</span><i data-lucide="send" class="w-4 h-4"></i>`;
+                lucide.createIcons();
+            }
+        }
+    </script>
+</body>
+</html>

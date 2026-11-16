@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Profil Pengguna — BNR</title>
+    
+    <!-- PWA & Theme -->
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#990000">
+    <link rel="icon" href="/assets/images/favicon.svg" type="image/svg+xml">
+
+    <!-- Fonts & Tailwind CSS -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        bnr: {
+                            red: '#CC0000',
+                            darkred: '#800000',
+                            lightred: '#FFEBEE',
+                            accent: '#990000',
+                            dark: '#0F172A',
+                            surface: '#F8FAFC',
+                            card: '#FFFFFF'
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Plus Jakarta Sans', 'sans-serif']
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <!-- Icons & SweetAlert -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="/assets/css/style.css">
+
+    <!-- App Configuration, Theme, API Client & Auth Guard -->
+    <script src="/js/config.js"></script>
+    <script src="/js/theme.js"></script>
+    <script src="/js/api.js"></script>
+    <script src="/js/auth-guard.js"></script>
+</head>
+<body class="bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans antialiased selection:bg-bnr-red selection:text-white min-h-screen">
+
+    <!-- APP SHELL CONTAINER -->
+    <div id="appLayout" class="min-h-screen flex flex-col md:flex-row">
+        
+        <!-- PROFILE CONTENT -->
+        <div class="max-w-xl mx-auto w-full space-y-6 page-fade-enter">
+            
+            <!-- USER CARD -->
+            <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 sm:p-8 shadow-sm text-center relative overflow-hidden">
+                <div class="w-20 h-20 rounded-full bg-gradient-to-tr from-bnr-red to-red-600 text-white font-extrabold text-2xl flex items-center justify-center mx-auto mb-4 shadow-lg" id="profileAvatar">
+                    U
+                </div>
+                <h3 class="font-extrabold text-lg text-slate-900 dark:text-white" id="profileFullName">Loading...</h3>
+                <p class="text-xs text-slate-400 font-mono" id="profileUsername">@username</p>
+                <div class="flex items-center justify-center space-x-2 mt-3">
+                    <span class="px-3 py-1 rounded-full text-[10px] font-bold bg-bnr-red/10 text-bnr-red border border-bnr-red/20 uppercase" id="profileRole">
+                        CUSTOMER
+                    </span>
+                    <span class="px-3 py-1 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 uppercase">
+                        AKTIF
+                    </span>
+                </div>
+            </div>
+
+            <!-- ACCOUNT INFO DETAILS -->
+            <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-sm space-y-4">
+                <h4 class="font-bold text-sm text-slate-900 dark:text-white pb-3 border-b border-slate-100 dark:border-slate-800">
+                    Informasi Data Nasabah
+                </h4>
+
+                <div class="space-y-3 text-xs">
+                    <div class="flex justify-between items-center py-1">
+                        <span class="text-slate-400">Nomor Rekening:</span>
+                        <span class="font-mono font-bold text-slate-800 dark:text-slate-200 text-sm" id="profileAccNo">-</span>
+                    </div>
+                    <div class="flex justify-between items-center py-1">
+                        <span class="text-slate-400">Terdaftar Sejak:</span>
+                        <span class="text-slate-800 dark:text-slate-200" id="profileCreatedAt">-</span>
+                    </div>
+                    <div class="flex justify-between items-center py-1">
+                        <span class="text-slate-400">Tipe Layanan:</span>
+                        <span class="font-semibold text-slate-800 dark:text-slate-200">BNR Virtual Banking Priority</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- OFFICIAL NAME CHANGE (FEE 5,000,000 IDR) -->
+            <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-sm space-y-4">
+                <div class="flex items-center space-x-3">
+                    <div class="w-9 h-9 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center shrink-0">
+                        <i data-lucide="edit-3" class="w-4 h-4"></i>
+                    </div>
+                    <div>
+                        <h4 class="font-bold text-sm text-slate-900 dark:text-white">Layanan Perubahan Nama Rekening</h4>
+                        <p class="text-[11px] text-slate-400">Ubah nama resmi yang tertera pada rekening dan transaksi</p>
+                    </div>
+                </div>
+
+                <div class="p-3.5 bg-amber-50 dark:bg-amber-950/20 border border-amber-200/80 dark:border-amber-800/40 rounded-2xl text-[11px] text-amber-800 dark:text-amber-300">
+                    <p class="font-bold mb-0.5">Biaya Administrasi Resmi:</p>
+                    <p>Perubahan nama nasabah dikenakan biaya pemotongan saldo otomatis sebesar <strong>Rp 5.000.000</strong>.</p>
+                </div>
+
+                <button type="button" onclick="promptChangeName()" class="w-full py-3 bg-slate-900 dark:bg-slate-800 hover:bg-slate-800 dark:hover:bg-slate-700 text-white font-semibold rounded-xl text-xs transition flex items-center justify-center space-x-2">
+                    <i data-lucide="user-check" class="w-4 h-4"></i>
+                    <span>Ajukan Perubahan Nama</span>
+                </button>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Components loader -->
+    <script src="/js/components.js"></script>
+
+    <script>
+        let currentUserName = '';
+
+        async function initProfilePage() {
+            try {
+                const res = await window.bnrApi.getMe();
+                const u = res.user;
+                currentUserName = u.name;
+
+                document.getElementById('profileAvatar').textContent = u.name.charAt(0).toUpperCase();
+                document.getElementById('profileFullName').textContent = u.name;
+                document.getElementById('profileUsername').textContent = '@' + u.username;
+                document.getElementById('profileRole').textContent = u.role;
+                document.getElementById('profileAccNo').textContent = u.accountNumber;
+                document.getElementById('profileCreatedAt').textContent = new Date(u.createdAt || Date.now()).toLocaleDateString('id-ID', { dateStyle: 'long' });
+            } catch (err) {
+                console.error('Error loading profile', err);
+            }
+        }
+
+        function promptChangeName() {
+            Swal.fire({
+                title: 'Ubah Nama Rekening',
+                text: 'Masukkan nama resmi baru Anda (Dikenakan biaya Rp 5.000.000):',
+                input: 'text',
+                inputValue: currentUserName,
+                showCancelButton: true,
+                confirmButtonColor: '#CC0000',
+                cancelButtonColor: '#64748B',
+                confirmButtonText: 'Konfirmasi Perubahan',
+                cancelButtonText: 'Batal',
+                inputValidator: (value) => {
+                    if (!value || value.trim().length < 3) {
+                        return 'Nama baru harus minimal 3 karakter!';
+                    }
+                }
+            }).then(async (result) => {
+                if (result.isConfirmed) {
+                    try {
+                        Swal.showLoading();
+                        const res = await window.bnrApi.changeName(result.value.trim());
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Nama Diperbarui',
+                            text: res.message,
+                            confirmButtonColor: '#CC0000'
+                        }).then(() => {
+                            window.location.reload();
+                        });
+                    } catch (err) {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Gagal Mengubah Nama',
+                            text: err.message || 'Terjadi kesalahan sistem.',
+                            confirmButtonColor: '#CC0000'
+                        });
+                    }
+                }
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            initProfilePage();
+        });
+    </script>
+</body>
+</html>

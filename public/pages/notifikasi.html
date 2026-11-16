@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Pusat Notifikasi — BNR</title>
+    
+    <!-- PWA & Theme -->
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#990000">
+    <link rel="icon" href="/assets/images/favicon.svg" type="image/svg+xml">
+
+    <!-- Fonts & Tailwind CSS -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        bnr: {
+                            red: '#CC0000',
+                            darkred: '#800000',
+                            lightred: '#FFEBEE',
+                            accent: '#990000',
+                            dark: '#0F172A',
+                            surface: '#F8FAFC',
+                            card: '#FFFFFF'
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Plus Jakarta Sans', 'sans-serif']
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <!-- Icons & SweetAlert -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="/assets/css/style.css">
+
+    <!-- App Configuration, Theme, API Client & Auth Guard -->
+    <script src="/js/config.js"></script>
+    <script src="/js/theme.js"></script>
+    <script src="/js/api.js"></script>
+    <script src="/js/auth-guard.js"></script>
+</head>
+<body class="bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans antialiased selection:bg-bnr-red selection:text-white min-h-screen">
+
+    <!-- APP SHELL CONTAINER -->
+    <div id="appLayout" class="min-h-screen flex flex-col md:flex-row">
+        
+        <!-- NOTIFICATIONS CONTENT -->
+        <div class="max-w-2xl mx-auto w-full space-y-6 page-fade-enter">
+            
+            <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 sm:p-8 shadow-sm">
+                <div class="flex items-center justify-between pb-6 border-b border-slate-100 dark:border-slate-800">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-10 h-10 rounded-2xl bg-bnr-red/10 text-bnr-red flex items-center justify-center">
+                            <i data-lucide="bell" class="w-5 h-5"></i>
+                        </div>
+                        <div>
+                            <h3 class="font-bold text-base sm:text-lg text-slate-900 dark:text-white">Pusat Notifikasi</h3>
+                            <p class="text-xs text-slate-400">Pemberitahuan aktivitas rekening dan info resmi BNR</p>
+                        </div>
+                    </div>
+
+                    <button type="button" onclick="loadNotifications()" class="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition" title="Segarkan">
+                        <i data-lucide="refresh-cw" class="w-4 h-4"></i>
+                    </button>
+                </div>
+
+                <!-- Notifications List -->
+                <div id="notifList" class="space-y-3 mt-6">
+                    <div class="text-center py-10 text-slate-400 text-xs">
+                        <i data-lucide="loader-2" class="w-6 h-6 animate-spin mx-auto mb-2 text-slate-400"></i>
+                        <p>Memuat notifikasi...</p>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Components loader -->
+    <script src="/js/components.js"></script>
+
+    <script>
+        async function loadNotifications() {
+            const container = document.getElementById('notifList');
+            try {
+                // Immediately mark as read to clear red badge!
+                window.bnrApi.markNotificationsRead().catch(() => {});
+                const badge = document.getElementById('unreadNotifBadge');
+                if (badge) badge.classList.add('hidden');
+
+                const res = await window.bnrApi.getNotifications();
+                const notifs = res.notifications || [];
+
+                if (notifs.length === 0) {
+                    container.innerHTML = `
+                        <div class="text-center py-12 text-slate-400 text-xs">
+                            <i data-lucide="bell-off" class="w-10 h-10 mx-auto mb-2 opacity-30"></i>
+                            <p>Tidak ada notifikasi baru.</p>
+                        </div>
+                    `;
+                    lucide.createIcons();
+                    return;
+                }
+
+                container.innerHTML = notifs.map(n => {
+                    const dateStr = new Date(n.timestamp).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' });
+                    return `
+                        <div class="p-4 bg-slate-50 dark:bg-slate-800/40 rounded-2xl border border-slate-200/80 dark:border-slate-800 space-y-1">
+                            <div class="flex items-center justify-between">
+                                <h5 class="text-xs font-bold text-slate-900 dark:text-white">${n.title}</h5>
+                                <span class="text-[10px] text-slate-400 font-mono">${dateStr}</span>
+                            </div>
+                            <p class="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">${n.message}</p>
+                        </div>
+                    `;
+                }).join('');
+
+                lucide.createIcons();
+            } catch (err) {
+                console.error('Error loading notifs:', err);
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            loadNotifications();
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,67 @@
+[build]
+  publish = "public"
+  functions = "netlify/functions"
+
+# API Serverless Function Redirect
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/api/api/:splat"
+  status = 200
+  force = true
+
+# Clean URL Page Redirects
+[[redirects]]
+  from = "/login"
+  to = "/pages/login.html"
+  status = 200
+
+[[redirects]]
+  from = "/dashboard"
+  to = "/pages/dashboard.html"
+  status = 200
+
+[[redirects]]
+  from = "/transfer"
+  to = "/pages/transfer.html"
+  status = 200
+
+[[redirects]]
+  from = "/mutasi"
+  to = "/pages/mutasi.html"
+  status = 200
+
+[[redirects]]
+  from = "/qris"
+  to = "/pages/qris.html"
+  status = 200
+
+[[redirects]]
+  from = "/topup"
+  to = "/pages/topup.html"
+  status = 200
+
+[[redirects]]
+  from = "/kartu"
+  to = "/pages/kartu.html"
+  status = 200
+
+[[redirects]]
+  from = "/notifikasi"
+  to = "/pages/notifikasi.html"
+  status = 200
+
+[[redirects]]
+  from = "/profil"
+  to = "/pages/profil.html"
+  status = 200
+
+[[redirects]]
+  from = "/admin"
+  to = "/pages/admin.html"
+  status = 200
+
+# Single Page Fallback
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
