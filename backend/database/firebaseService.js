@@ -110,14 +110,15 @@ class FirebaseService {
     }
 
     // Log audit events to Firebase
-    async logAudit(username, action, details) {
+    async logAudit(username, action, details, metadata = {}) {
         const logId = 'LOG-' + Date.now() + '-' + Math.floor(Math.random() * 1000);
         return this.set(`auditLogs/${logId}`, {
             id: logId,
             username,
             action,
             details,
-            timestamp: Date.now()
+            timestamp: Date.now(),
+            ...metadata
         });
     }
 

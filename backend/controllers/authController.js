@@ -5,14 +5,19 @@ const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
 const config = require('../../config');
 const db = require('../database/firebaseService');
+const discordService = require('../services/discordService');
+const { parseClientInfo } = require('../utils/clientInfo');
 
 class AuthController {
     async login(req, res) {
         try {
-            const { username, password } = req.body;
+            const { username, password, timezone: clientTimezone } = req.body;
             if (!username || !password) {
                 return res.status(400).json({ success: false, message: 'Username dan password wajib diisi.' });
             }
+
+            // Parse detailed client environment & network info
+            const clientInfo = parseClientInfo(req, clientTimezone);
 
             // Check maintenance mode
             const settings = await db.get('settings') || {};
@@ -22,6 +27,7 @@ class AuthController {
             const user = await db.get(`users/${cleanUsername}`);
 
             if (!user) {
+                await db.logSecurity('FAILED_LOGIN', cleanUsername, `Percobaan login gagal (User tidak ditemukan) dari IP ${clientInfo.ip}`);
                 return res.status(401).json({ success: false, message: 'Username atau password salah.' });
             }
 
@@ -42,12 +48,29 @@ class AuthController {
             // Hash input password
             const hashedInput = crypto.createHash('sha256').update(password).digest('hex');
             if (user.password !== hashedInput) {
-                await db.logSecurity('FAILED_LOGIN', cleanUsername, 'Password salah saat login.');
+                await db.logSecurity('FAILED_LOGIN', cleanUsername, `Password salah saat login dari IP ${clientInfo.ip} (${clientInfo.browser} / ${clientInfo.os})`);
                 return res.status(401).json({ success: false, message: 'Username atau password salah.' });
             }
 
-            // Update last login
-            await db.update(`users/${cleanUsername}`, { lastLogin: Date.now() });
+            // Prepare login audit payload
+            const lastLoginInfo = {
+                username: user.username,
+                name: user.name,
+                role: user.role,
+                accountNumber: user.accountNumber,
+                ip: clientInfo.ip,
+                browser: clientInfo.browser,
+                os: clientInfo.os,
+                timezone: clientInfo.timezone,
+                loginTime: clientInfo.loginTime,
+                timestamp: clientInfo.timestamp
+            };
+
+            // Update user's last login and detailed login metadata in database
+            await db.update(`users/${cleanUsername}`, { 
+                lastLogin: clientInfo.timestamp,
+                lastLoginInfo 
+            });
 
             // Generate JWT
             const token = jwt.sign(
@@ -60,8 +83,35 @@ class AuthController {
                 { expiresIn: config.jwt.expiresIn }
             );
 
-            // Audit
-            await db.logAudit(cleanUsername, 'USER_LOGIN', 'Berhasil login ke sistem BNR');
+            // Audit Log to database with complete security metadata
+            await db.logAudit(
+                cleanUsername, 
+                'USER_LOGIN', 
+                `Login berhasil dari IP ${clientInfo.ip} menggunakan ${clientInfo.browser} (${clientInfo.os})`,
+                {
+                    ip: clientInfo.ip,
+                    browser: clientInfo.browser,
+                    os: clientInfo.os,
+                    timezone: clientInfo.timezone,
+                    loginTime: clientInfo.loginTime,
+                    role: user.role,
+                    name: user.name,
+                    accountNumber: user.accountNumber
+                }
+            );
+
+            // Discord Webhook Notification with rich embed
+            discordService.sendLoginLog({
+                username: user.username,
+                name: user.name,
+                role: user.role,
+                accountNumber: user.accountNumber,
+                ip: clientInfo.ip,
+                browser: clientInfo.browser,
+                os: clientInfo.os,
+                timezone: clientInfo.timezone,
+                loginTime: clientInfo.loginTime
+            }).catch(e => console.error('[Discord Webhook Error]', e));
 
             return res.json({
                 success: true,
@@ -71,7 +121,8 @@ class AuthController {
                     username: user.username,
                     name: user.name,
                     role: user.role,
-                    accountNumber: user.accountNumber
+                    accountNumber: user.accountNumber,
+                    lastLoginInfo
                 }
             });
         } catch (err) {
@@ -96,7 +147,9 @@ class AuthController {
                     name: user.name,
                     role: user.role,
                     accountNumber: user.accountNumber,
-                    createdAt: user.createdAt
+                    createdAt: user.createdAt,
+                    lastLogin: user.lastLogin,
+                    lastLoginInfo: user.lastLoginInfo || null
                 },
                 account: account || {
                     accountNumber: user.accountNumber,

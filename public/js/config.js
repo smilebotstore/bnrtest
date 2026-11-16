@@ -22,6 +22,9 @@ window.BNR_CONFIG = {
         // Favicon / Icon Tab Browser
         faviconUrl: "/assets/images/favicon.svg",
         
+        // Gambar QRIS (opsional, jika dikosongkan akan otomatis memakai QRIS standar nasional BNR)
+        qrisImageUrl: "",
+
         // Ikon aplikasi PWA
         pwaIcon192: "/assets/images/bnr-logo.png",
         pwaIcon512: "/assets/images/bnr-logo.png"

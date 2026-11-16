@@ -80,9 +80,14 @@ class BnrApiClient {
 
     // Public / Auth
     async login(username, password) {
+        let timezone = 'Asia/Jakarta';
+        try {
+            timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Jakarta';
+        } catch {}
+
         const data = await this.request('/api/auth/login', {
             method: 'POST',
-            body: JSON.stringify({ username, password })
+            body: JSON.stringify({ username, password, timezone })
         });
         if (data.token) {
             this.setToken(data.token);
