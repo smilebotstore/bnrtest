@@ -349,10 +349,33 @@ function navigateTo(viewId, pushState = true) {
     }
 }
 
-function toggleMobileDrawer() {
+function toggleMobileDrawer(forceState) {
     const drawer = document.getElementById('mobileDrawer');
-    if (drawer) drawer.classList.toggle('hidden');
+    if (!drawer) return;
+    if (typeof forceState === 'boolean') {
+        if (forceState) {
+            drawer.classList.remove('hidden');
+        } else {
+            drawer.classList.add('hidden');
+        }
+    } else {
+        drawer.classList.toggle('hidden');
+    }
 }
+
+function closeMobileDrawer() {
+    toggleMobileDrawer(false);
+}
+
+function handleDrawerBackdropClick(e) {
+    if (e.target === document.getElementById('mobileDrawer')) {
+        closeMobileDrawer();
+    }
+}
+
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') closeMobileDrawer();
+});
 
 // 4. SIDEBAR & MOBILE NAVIGATION RENDERER
 function renderSidebarAndNav() {
@@ -424,7 +447,7 @@ function renderSidebarAndNav() {
             const activeClass = isActive ? 'bg-bnr-red text-white font-semibold' : 'text-slate-400 hover:text-white hover:bg-slate-800';
             const badge = item.highlight ? `<span class="ml-auto bg-amber-500/20 text-amber-300 text-[10px] px-1.5 py-0.5 rounded font-mono">ADMIN</span>` : '';
             html += `
-                <button onclick="navigateTo('${item.id}')" class="w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl text-sm transition ${activeClass}">
+                <button onclick="navigateTo('${item.id}'); closeMobileDrawer();" class="w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl text-sm transition ${activeClass}">
                     <i data-lucide="${item.icon}" class="w-5 h-5"></i>
                     <span>${item.label}</span>
                     ${badge}
@@ -494,7 +517,7 @@ function formatCurrency(amount) {
 // --- DASHBOARD VIEW ---
 async function renderDashboardView() {
     const contentArea = document.getElementById('contentArea');
-    const balanceDisplay = isBalanceHidden ? '••••••••' : formatCurrency(currentAccount ? currentAccount.balance : 0);
+    const balanceDisplay = isBalanceHidden ? '••••••••' : formatCurrency(currentAccount ? currentAccount.balance : 0).replace(/\u00A0/g, ' ');
     const maskedAcc = maskAccount(currentUser.accountNumber);
     const logoSrc = (window.BNR_CONFIG && window.BNR_CONFIG.branding && window.BNR_CONFIG.branding.logoUrl) || '/assets/images/bnr-logo.svg';
 
@@ -513,15 +536,15 @@ async function renderDashboardView() {
             </div>
 
             <!-- ATM Card Saldo Utama -->
-            <div class="relative overflow-hidden bnr-card-gradient rounded-3xl p-6 sm:p-8 text-white shadow-xl">
+            <div class="relative overflow-hidden bnr-card-gradient rounded-3xl p-5 sm:p-8 text-white shadow-xl">
                 <div class="absolute -right-10 -bottom-10 w-48 h-48 bg-white/10 rounded-full blur-2xl pointer-events-none"></div>
-                <div class="relative z-10 flex flex-col justify-between h-full space-y-8">
+                <div class="relative z-10 flex flex-col justify-between h-full space-y-6 sm:space-y-8">
                     <div class="flex justify-between items-start">
                         <div>
                             <span class="text-xs font-semibold tracking-widest text-red-100 uppercase">BNR Digital Account</span>
-                            <p class="text-2xl font-mono tracking-widest mt-1">${maskedAcc}</p>
+                            <p class="text-xl sm:text-2xl font-mono tracking-widest mt-1">${maskedAcc}</p>
                         </div>
-                        <img src="${logoSrc}" class="bnr-brand-logo w-12 h-12 object-contain bg-white/10 p-1.5 rounded-xl border border-white/20" alt="Logo">
+                        <img src="${logoSrc}" class="bnr-brand-logo w-11 h-11 sm:w-12 sm:h-12 object-contain bg-white/10 p-1.5 rounded-xl border border-white/20" alt="Logo">
                     </div>
 
                     <div>
@@ -531,7 +554,7 @@ async function renderDashboardView() {
                                 <i data-lucide="${isBalanceHidden ? 'eye' : 'eye-off'}" class="w-4 h-4"></i>
                             </button>
                         </div>
-                        <h2 class="text-3xl sm:text-4xl font-extrabold tracking-tight font-mono">${balanceDisplay}</h2>
+                        <h2 class="text-xl min-[400px]:text-2xl sm:text-3xl md:text-4xl font-extrabold tracking-tight break-all sm:break-normal leading-tight">${balanceDisplay}</h2>
                     </div>
                 </div>
             </div>

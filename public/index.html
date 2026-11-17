@@ -228,15 +228,15 @@
             </nav>
 
             <!-- MOBILE DRAWER -->
-            <div id="mobileDrawer" class="hidden md:hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm">
-                <div class="w-72 bg-slate-900 h-full text-slate-300 p-6 flex flex-col justify-between overflow-y-auto">
+            <div id="mobileDrawer" onclick="handleDrawerBackdropClick(event)" class="hidden md:hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm cursor-pointer transition-opacity">
+                <div onclick="event.stopPropagation()" class="w-72 bg-slate-900 h-full text-slate-300 p-6 flex flex-col justify-between overflow-y-auto cursor-default shadow-2xl">
                     <div>
                         <div class="flex items-center justify-between pb-6 border-b border-slate-800">
                             <div class="flex items-center space-x-3">
                                 <img src="/assets/images/bnr-logo.svg" class="bnr-brand-logo w-8 h-8 object-contain" alt="BNR">
                                 <span class="font-extrabold text-white text-base">BNR</span>
                             </div>
-                            <button onclick="toggleMobileDrawer()" class="text-slate-400 hover:text-white">
+                            <button onclick="closeMobileDrawer()" class="text-slate-400 hover:text-white">
                                 <i data-lucide="x" class="w-6 h-6"></i>
                             </button>
                         </div>

@@ -1,9 +1,9 @@
 /**
- * BNR Service Worker v6
+ * BNR Service Worker v7
  * Caches core static assets for clean SPA architecture.
  */
 
-const CACHE_NAME = 'bnr-pwa-v6';
+const CACHE_NAME = 'bnr-pwa-v7';
 const ASSETS_TO_CACHE = [
     '/',
     '/index.html',
