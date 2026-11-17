@@ -824,6 +824,7 @@ async function renderMutationView() {
         const res = await window.bnrApi.getTransactionHistory();
         const txList = res.transactions || [];
         const container = document.getElementById('mutationList');
+        if (!container) return;
 
         if (txList.length === 0) {
             container.innerHTML = `<div class="text-center py-8 text-slate-400 text-xs">Belum ada mutasi transaksi.</div>`;
@@ -991,6 +992,7 @@ async function renderNotificationsView() {
         const res = await window.bnrApi.getNotifications();
         const notifs = res.notifications || [];
         const container = document.getElementById('notifContainer');
+        if (!container) return;
 
         if (notifs.length === 0) {
             container.innerHTML = `<div class="text-center py-6 text-slate-400 text-xs">Belum ada notifikasi.</div>`;

@@ -1,9 +1,9 @@
 /**
- * BNR Service Worker v8
+ * BNR Service Worker v10
  * Caches core static assets for clean SPA architecture.
  */
 
-const CACHE_NAME = 'bnr-pwa-v8';
+const CACHE_NAME = 'bnr-pwa-v10';
 const ASSETS_TO_CACHE = [
     '/',
     '/index.html',
@@ -40,15 +40,28 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
-    // API calls bypass service worker cache
+    // API calls and non-GET requests bypass service worker cache
     if (event.request.method !== 'GET' || event.request.url.includes('/api/')) {
         return;
     }
 
+    // SPA Navigation requests (e.g. /mutasi, /dashboard, /transfer)
+    if (event.request.mode === 'navigate') {
+        event.respondWith(
+            fetch(event.request).catch(() => {
+                return caches.match('/index.html') || caches.match('/');
+            })
+        );
+        return;
+    }
+
+    // Static assets
     event.respondWith(
         caches.match(event.request).then((cached) => {
             if (cached) return cached;
-            return fetch(event.request);
+            return fetch(event.request).catch(() => {
+                return new Response('', { status: 404, statusText: 'Not Found' });
+            });
         })
     );
 });
