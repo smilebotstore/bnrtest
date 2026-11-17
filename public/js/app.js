@@ -388,7 +388,13 @@ function renderSidebarAndNav() {
     const avatarEl = document.getElementById('sidebarUserAvatar');
     if (nameEl) nameEl.textContent = currentUser.name;
     if (roleEl) roleEl.textContent = currentUser.role;
-    if (avatarEl) avatarEl.textContent = currentUser.name.charAt(0).toUpperCase();
+    if (avatarEl) {
+        if (currentUser.avatarUrl) {
+            avatarEl.innerHTML = `<img src="${currentUser.avatarUrl}" class="w-full h-full rounded-full object-cover" alt="Avatar">`;
+        } else {
+            avatarEl.textContent = (currentUser.name || currentUser.username || 'U').charAt(0).toUpperCase();
+        }
+    }
 
     const sidebarMenu = document.getElementById('sidebarMenu');
     const mobileDrawerMenu = document.getElementById('mobileDrawerMenu');
@@ -1016,13 +1022,31 @@ function renderProfileView() {
     const contentArea = document.getElementById('contentArea');
     contentArea.innerHTML = `
         <div class="max-w-2xl mx-auto bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 sm:p-8 shadow-sm space-y-6 page-fade-enter">
-            <div class="flex items-center space-x-4 pb-6 border-b border-slate-200 dark:border-slate-800">
-                <div class="w-16 h-16 rounded-2xl bg-bnr-red text-white flex items-center justify-center font-extrabold text-2xl uppercase">
-                    ${currentUser.name.charAt(0)}
+            <div class="flex items-center space-x-5 pb-6 border-b border-slate-200 dark:border-slate-800">
+                <!-- Circular Avatar with overlapping bottom-right upload button -->
+                <div class="relative w-20 h-20 sm:w-24 sm:h-24 flex-shrink-0">
+                    <div id="profileAvatarDisplay" class="w-20 h-20 sm:w-24 sm:h-24 rounded-full overflow-hidden bg-bnr-red text-white flex items-center justify-center font-extrabold text-2xl sm:text-3xl uppercase shadow-md border-2 border-white dark:border-slate-800">
+                        ${currentUser.avatarUrl 
+                            ? `<img src="${currentUser.avatarUrl}" class="w-full h-full object-cover" alt="Foto Profil">` 
+                            : (currentUser.name || currentUser.username || 'U').charAt(0).toUpperCase()}
+                    </div>
+                    <!-- Upload Button on the circular border and slightly outside -->
+                    <button type="button" onclick="document.getElementById('profileAvatarInput').click()" title="Unggah Foto Profil" 
+                        class="absolute -bottom-1 -right-1 sm:bottom-0 sm:right-0 w-8 h-8 rounded-full bg-slate-900 hover:bg-bnr-red dark:bg-slate-700 dark:hover:bg-bnr-red text-white shadow-lg border-2 border-white dark:border-slate-900 flex items-center justify-center transition cursor-pointer group">
+                        <i data-lucide="camera" class="w-4 h-4 group-hover:scale-110 transition-transform"></i>
+                    </button>
+                    <input type="file" id="profileAvatarInput" accept="image/png, image/jpeg, image/jpg, image/webp" class="hidden" onchange="handleAvatarFileSelected(event)">
                 </div>
+
                 <div>
                     <h3 class="text-xl font-extrabold text-slate-800 dark:text-white">${currentUser.name}</h3>
                     <p class="text-xs text-slate-500 dark:text-slate-400 font-mono">@${currentUser.username} • ${currentUser.role}</p>
+                    ${currentUser.avatarUrl ? `
+                        <button onclick="handleRemoveAvatar()" class="mt-2 text-[11px] text-rose-500 hover:text-rose-600 dark:text-rose-400 font-semibold flex items-center space-x-1 transition">
+                            <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                            <span>Hapus foto profil</span>
+                        </button>
+                    ` : ''}
                 </div>
             </div>
 
@@ -1046,6 +1070,120 @@ function renderProfileView() {
             </div>
         </div>
     `;
+    lucide.createIcons();
+}
+
+async function handleAvatarFileSelected(event) {
+    const file = event.target.files && event.target.files[0];
+    if (!file) return;
+
+    if (!['image/png', 'image/jpeg', 'image/jpg', 'image/webp'].includes(file.type)) {
+        Swal.fire('Format Tidak Didukung', 'Silakan pilih file gambar dengan format PNG, JPEG, atau WebP.', 'warning');
+        return;
+    }
+
+    if (file.size > 4 * 1024 * 1024) {
+        Swal.fire('Ukuran Terlalu Besar', 'Maksimal ukuran foto adalah 4MB.', 'warning');
+        return;
+    }
+
+    try {
+        const reader = new FileReader();
+        reader.onload = async function(e) {
+            const rawDataUrl = e.target.result;
+            const resizedDataUrl = await resizeImageToMax(rawDataUrl, 800);
+
+            Swal.fire({
+                title: 'Mengunggah Foto...',
+                text: 'Menyimpan foto profil baru ke server BNR',
+                allowOutsideClick: false,
+                didOpen: () => Swal.showLoading()
+            });
+
+            try {
+                const res = await window.bnrApi.uploadAvatar(resizedDataUrl);
+                currentUser.avatarUrl = res.avatarUrl;
+                window.bnrApi.setSavedUser(currentUser);
+
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Foto Profil Diperbarui',
+                    text: res.message,
+                    timer: 1800,
+                    showConfirmButton: false
+                });
+
+                renderProfileView();
+                renderSidebarAndNav();
+            } catch (apiErr) {
+                Swal.fire('Gagal Mengunggah', apiErr.message, 'error');
+            }
+        };
+        reader.readAsDataURL(file);
+    } catch (err) {
+        Swal.fire('Gagal', err.message, 'error');
+    }
+}
+
+async function handleRemoveAvatar() {
+    const confirm = await Swal.fire({
+        title: 'Hapus Foto Profil?',
+        text: 'Tampilan profil akan kembali menggunakan inisial nama Anda.',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#CC0000',
+        cancelButtonColor: '#64748B',
+        confirmButtonText: 'Ya, Hapus',
+        cancelButtonText: 'Batal'
+    });
+
+    if (confirm.isConfirmed) {
+        try {
+            await window.bnrApi.removeAvatar();
+            currentUser.avatarUrl = null;
+            window.bnrApi.setSavedUser(currentUser);
+
+            Swal.fire({
+                icon: 'success',
+                title: 'Foto Dihapus',
+                text: 'Profil kembali menggunakan inisial nama.',
+                timer: 1500,
+                showConfirmButton: false
+            });
+
+            renderProfileView();
+            renderSidebarAndNav();
+        } catch (err) {
+            Swal.fire('Gagal', err.message, 'error');
+        }
+    }
+}
+
+function resizeImageToMax(dataUrl, maxSize) {
+    return new Promise((resolve) => {
+        const img = new Image();
+        img.onload = () => {
+            let width = img.width;
+            let height = img.height;
+            if (width > maxSize || height > maxSize) {
+                if (width > height) {
+                    height = Math.round((height * maxSize) / width);
+                    width = maxSize;
+                } else {
+                    width = Math.round((width * maxSize) / height);
+                    height = maxSize;
+                }
+            }
+            const canvas = document.createElement('canvas');
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, width, height);
+            resolve(canvas.toDataURL('image/jpeg', 0.88));
+        };
+        img.onerror = () => resolve(dataUrl);
+        img.src = dataUrl;
+    });
 }
 
 async function handleChangeNamePrompt() {
@@ -1159,12 +1297,19 @@ async function renderAdminUsers() {
     ws.innerHTML = `
         <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 space-y-4">
             <div class="flex justify-between items-center">
-                <h4 class="font-bold text-sm text-slate-800 dark:text-white">Daftar Nasabah BNR</h4>
-                <button onclick="promptCreateNewAccount()" class="px-3 py-1.5 bg-bnr-red text-white rounded-xl text-xs font-semibold">+ Buat Akun Baru</button>
+                <div>
+                    <h4 class="font-bold text-sm text-slate-800 dark:text-white">Daftar Nasabah BNR</h4>
+                    <p class="text-xs text-slate-400">Kelola akun, saldo, dan status nasabah terdaftar.</p>
+                </div>
+                <button onclick="openCreateCustomerModal()" class="px-3.5 py-2 bg-bnr-red hover:bg-red-700 text-white rounded-xl text-xs font-bold transition flex items-center space-x-1.5 shadow-md shadow-red-600/20">
+                    <i data-lucide="user-plus" class="w-3.5 h-3.5"></i>
+                    <span>+ Buat Nasabah Baru</span>
+                </button>
             </div>
             <div id="adminUserTable" class="overflow-x-auto text-xs">Memuat nasabah...</div>
         </div>
     `;
+    lucide.createIcons();
 
     try {
         const res = await window.bnrApi.adminGetUsers();
@@ -1175,23 +1320,41 @@ async function renderAdminUsers() {
             <table class="w-full text-left">
                 <thead class="border-b border-slate-200 dark:border-slate-800 text-slate-400">
                     <tr>
-                        <th class="pb-2">User</th>
-                        <th class="pb-2">Rekening</th>
-                        <th class="pb-2">Saldo</th>
-                        <th class="pb-2">Status</th>
-                        <th class="pb-2 text-right">Aksi</th>
+                        <th class="pb-2.5">Nasabah</th>
+                        <th class="pb-2.5">Discord</th>
+                        <th class="pb-2.5">Rekening</th>
+                        <th class="pb-2.5">Saldo</th>
+                        <th class="pb-2.5">Status</th>
+                        <th class="pb-2.5 text-right">Aksi</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
                     ${users.map(u => `
                         <tr>
-                            <td class="py-2.5 font-bold text-slate-800 dark:text-white">${u.name} (@${u.username})</td>
-                            <td class="py-2.5 font-mono text-slate-500">${u.accountNumber}</td>
-                            <td class="py-2.5 font-mono text-emerald-600 font-bold">${formatCurrency(u.balance)}</td>
-                            <td class="py-2.5">${u.status}</td>
-                            <td class="py-2.5 text-right space-x-1">
-                                <button onclick="promptEditBalance('${u.accountNumber}')" class="px-2 py-1 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 rounded text-[10px]">Edit Saldo</button>
-                                <button onclick="toggleUserStatus('${u.username}', '${u.status}')" class="px-2 py-1 ${u.status === 'ACTIVE' ? 'bg-rose-50 text-rose-600' : 'bg-emerald-50 text-emerald-600'} rounded text-[10px]">
+                            <td class="py-3">
+                                <div class="flex items-center space-x-2.5">
+                                    <div class="w-7 h-7 rounded-full overflow-hidden bg-bnr-red text-white flex items-center justify-center font-bold text-xs uppercase flex-shrink-0">
+                                        ${u.avatarUrl ? `<img src="${u.avatarUrl}" class="w-full h-full object-cover">` : (u.name || u.username || 'U').charAt(0).toUpperCase()}
+                                    </div>
+                                    <div>
+                                        <span class="font-bold text-slate-800 dark:text-white block leading-tight">${u.name || u.username}</span>
+                                        <span class="text-[10px] text-slate-400 font-mono">@${u.username}</span>
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="py-3 font-mono text-slate-600 dark:text-slate-300 text-xs">
+                                ${u.discordUsername && u.discordUsername !== '-' ? `@${u.discordUsername}` : '-'}
+                            </td>
+                            <td class="py-3 font-mono text-slate-500 text-xs">${u.accountNumber}</td>
+                            <td class="py-3 font-mono text-emerald-600 font-bold text-xs">${formatCurrency(u.balance)}</td>
+                            <td class="py-3">
+                                <span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${u.status === 'ACTIVE' ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800' : 'bg-rose-50 text-rose-600 dark:bg-rose-950/40 dark:text-rose-400 border border-rose-200 dark:border-rose-800'}">
+                                    ${u.status}
+                                </span>
+                            </td>
+                            <td class="py-3 text-right space-x-1 whitespace-nowrap">
+                                <button onclick="promptEditBalance('${u.accountNumber}')" class="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-lg text-[10px] font-semibold transition">Edit Saldo</button>
+                                <button onclick="toggleUserStatus('${u.username}', '${u.status}')" class="px-2.5 py-1 ${u.status === 'ACTIVE' ? 'bg-rose-50 hover:bg-rose-100 text-rose-600 dark:bg-rose-950/40 dark:hover:bg-rose-900/50 dark:text-rose-400' : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-600 dark:bg-emerald-950/40 dark:hover:bg-emerald-900/50 dark:text-emerald-400'} rounded-lg text-[10px] font-semibold transition">
                                     ${u.status === 'ACTIVE' ? 'Suspend' : 'Aktifkan'}
                                 </button>
                             </td>
@@ -1205,50 +1368,272 @@ async function renderAdminUsers() {
     }
 }
 
-async function promptCreateNewAccount() {
-    const { value: formValues } = await Swal.fire({
-        title: 'Buat Nasabah Baru',
-        html: `
-            <div class="space-y-3 text-left text-xs">
-                <div>
-                    <label class="block mb-1 font-bold">Nama Nasabah:</label>
-                    <input id="swalName" class="swal2-input !m-0 !w-full !text-xs" placeholder="Nama Lengkap">
-                </div>
-                <div>
-                    <label class="block mb-1 font-bold">Username Roblox:</label>
-                    <input id="swalUsername" class="swal2-input !m-0 !w-full !text-xs" placeholder="username">
-                </div>
-                <div>
-                    <label class="block mb-1 font-bold">Password:</label>
-                    <input id="swalPassword" type="password" class="swal2-input !m-0 !w-full !text-xs" placeholder="Password">
-                </div>
-                <div>
-                    <label class="block mb-1 font-bold">Saldo Awal (Rp):</label>
-                    <input id="swalBalance" type="number" class="swal2-input !m-0 !w-full !text-xs" value="0">
-                </div>
-            </div>
-        `,
-        focusConfirm: false,
-        showCancelButton: true,
-        confirmButtonColor: '#CC0000',
-        confirmButtonText: 'Buat Akun',
-        preConfirm: () => {
-            return {
-                name: document.getElementById('swalName').value.trim(),
-                username: document.getElementById('swalUsername').value.trim(),
-                password: document.getElementById('swalPassword').value,
-                initialBalance: document.getElementById('swalBalance').value
-            };
-        }
-    });
+// Beautified Modern Modal for Creating New Customer with Discord Verification
+let lastVerifiedDiscord = null;
 
-    if (formValues && formValues.name && formValues.username && formValues.password) {
-        try {
-            const res = await window.bnrApi.adminCreateUser(formValues);
-            Swal.fire('Berhasil', res.message, 'success');
-            renderAdminUsers();
-        } catch (err) {
-            Swal.fire('Gagal Membuat Akun', err.message, 'error');
+function openCreateCustomerModal() {
+    lastVerifiedDiscord = null;
+    const container = document.getElementById('appModalContainer');
+    if (!container) return;
+
+    container.innerHTML = `
+        <div id="createCustomerModalBackdrop" onclick="handleCustomerModalBackdrop(event)" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-in fade-in duration-200">
+            <div onclick="event.stopPropagation()" class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl max-w-lg w-full p-6 sm:p-8 shadow-2xl relative max-h-[92vh] overflow-y-auto">
+                <!-- Close Button -->
+                <button onclick="closeCreateCustomerModal()" type="button" class="absolute top-5 right-5 p-2 text-slate-400 hover:text-slate-700 dark:hover:text-white rounded-xl transition">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+
+                <!-- Header -->
+                <div class="mb-5">
+                    <span class="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-bnr-red dark:bg-rose-950/50 dark:text-rose-400 uppercase tracking-wider mb-1.5">Administrasi Nasabah</span>
+                    <h3 class="text-xl font-extrabold text-slate-900 dark:text-white">Buka Rekening Nasabah Baru</h3>
+                    <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Daftarkan akun nasabah baru ke sistem perbankan virtual BNR.</p>
+                </div>
+
+                <!-- Alert Box -->
+                <div id="modalAlertBox" class="hidden mb-4 p-3 rounded-2xl text-xs font-medium"></div>
+
+                <!-- Form -->
+                <form id="createCustomerForm" onsubmit="handleCreateCustomerSubmit(event)" class="space-y-4">
+                    <!-- Nama Lengkap -->
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                            Nama Lengkap Nasabah <span class="text-rose-500">*</span>
+                        </label>
+                        <div class="relative">
+                            <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                                <i data-lucide="user" class="w-4 h-4"></i>
+                            </span>
+                            <input type="text" id="custName" required placeholder="cth. Haruukii Dharmawijaya"
+                                class="w-full pl-10 pr-4 py-2.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/80 rounded-2xl text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-bnr-red transition">
+                        </div>
+                    </div>
+
+                    <!-- Username Roblox -->
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                            Username Roblox <span class="text-rose-500">*</span>
+                        </label>
+                        <div class="relative">
+                            <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400 font-bold text-xs">
+                                @
+                            </span>
+                            <input type="text" id="custUsername" required placeholder="username_roblox"
+                                class="w-full pl-9 pr-4 py-2.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/80 rounded-2xl text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-bnr-red transition">
+                        </div>
+                    </div>
+
+                    <!-- Username Discord (Validasi API Discord) -->
+                    <div>
+                        <div class="flex items-center justify-between mb-1.5">
+                            <label class="block text-xs font-bold text-slate-700 dark:text-slate-300">
+                                Username Discord <span class="text-rose-500">*</span>
+                            </label>
+                            <span class="text-[10px] text-slate-400">Verifikasi Server Discord</span>
+                        </div>
+                        <div class="relative flex items-center">
+                            <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                                <i data-lucide="message-square" class="w-4 h-4"></i>
+                            </span>
+                            <input type="text" id="custDiscord" required placeholder="cth. haruukii" oninput="handleDiscordInput(this.value)"
+                                class="w-full pl-10 pr-24 py-2.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/80 rounded-2xl text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-bnr-red transition">
+                            <button type="button" id="btnCheckDiscord" onclick="verifyDiscordInModal()"
+                                class="absolute right-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-white dark:bg-slate-700 dark:hover:bg-slate-600 rounded-xl text-[11px] font-semibold transition">
+                                <span id="discordBtnText">Cek Akun</span>
+                            </button>
+                        </div>
+                        <div id="discordFeedback" class="mt-1.5 text-[11px] text-slate-500 dark:text-slate-400">
+                            Username akan divalidasi ke server resmi Discord sebelum akun dibuat.
+                        </div>
+                    </div>
+
+                    <!-- Password Akun -->
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                            Password Akun <span class="text-rose-500">*</span>
+                        </label>
+                        <div class="relative">
+                            <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                                <i data-lucide="lock" class="w-4 h-4"></i>
+                            </span>
+                            <input type="password" id="custPassword" required placeholder="Minimal 6 karakter"
+                                class="w-full pl-10 pr-10 py-2.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/80 rounded-2xl text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-bnr-red transition">
+                            <button type="button" onclick="togglePasswordModalVisibility()" class="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-600 dark:hover:text-white">
+                                <i data-lucide="eye" id="custEyeIcon" class="w-4 h-4"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Saldo Awal -->
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                            Saldo Awal Pembukaan Rekening
+                        </label>
+                        <div class="relative">
+                            <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400 font-bold text-xs">
+                                Rp
+                            </span>
+                            <input type="number" id="custBalance" min="0" value="0" placeholder="0"
+                                class="w-full pl-10 pr-4 py-2.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/80 rounded-2xl text-xs font-mono text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-bnr-red transition">
+                        </div>
+                        <div class="flex flex-wrap gap-1.5 mt-2">
+                            <button type="button" onclick="document.getElementById('custBalance').value = 0" class="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-lg text-[10px] font-medium transition">Rp 0</button>
+                            <button type="button" onclick="document.getElementById('custBalance').value = 50000" class="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-lg text-[10px] font-medium transition">Rp 50.000</button>
+                            <button type="button" onclick="document.getElementById('custBalance').value = 100000" class="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-lg text-[10px] font-medium transition">Rp 100.000</button>
+                            <button type="button" onclick="document.getElementById('custBalance').value = 500000" class="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-lg text-[10px] font-medium transition">Rp 500.000</button>
+                            <button type="button" onclick="document.getElementById('custBalance').value = 1000000" class="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-lg text-[10px] font-medium transition">Rp 1.000.000</button>
+                        </div>
+                    </div>
+
+                    <!-- Footer Actions -->
+                    <div class="pt-3 flex items-center justify-end space-x-3 border-t border-slate-100 dark:border-slate-800">
+                        <button type="button" onclick="closeCreateCustomerModal()" class="px-4 py-2.5 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-2xl text-xs font-bold transition">
+                            Batal
+                        </button>
+                        <button type="submit" id="btnSubmitCustomer" class="px-5 py-2.5 bg-bnr-red hover:bg-red-700 text-white rounded-2xl text-xs font-bold shadow-md shadow-red-600/20 transition flex items-center space-x-1.5">
+                            <i data-lucide="user-plus" class="w-4 h-4"></i>
+                            <span id="btnSubmitText">Daftarkan Nasabah</span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    `;
+    lucide.createIcons();
+}
+
+function closeCreateCustomerModal() {
+    const container = document.getElementById('appModalContainer');
+    if (container) container.innerHTML = '';
+}
+
+function handleCustomerModalBackdrop(e) {
+    if (e.target.id === 'createCustomerModalBackdrop') {
+        closeCreateCustomerModal();
+    }
+}
+
+function handleDiscordInput(val) {
+    lastVerifiedDiscord = null;
+    const feedback = document.getElementById('discordFeedback');
+    if (feedback) {
+        feedback.className = 'mt-1.5 text-[11px] text-slate-500 dark:text-slate-400';
+        feedback.innerHTML = 'Username akan divalidasi ke server resmi Discord sebelum akun dibuat.';
+    }
+}
+
+function togglePasswordModalVisibility() {
+    const pwd = document.getElementById('custPassword');
+    const icon = document.getElementById('custEyeIcon');
+    if (!pwd) return;
+    if (pwd.type === 'password') {
+        pwd.type = 'text';
+        if (icon) icon.setAttribute('data-lucide', 'eye-off');
+    } else {
+        pwd.type = 'password';
+        if (icon) icon.setAttribute('data-lucide', 'eye');
+    }
+    lucide.createIcons();
+}
+
+async function verifyDiscordInModal() {
+    const discordInput = document.getElementById('custDiscord');
+    const feedback = document.getElementById('discordFeedback');
+    const btnText = document.getElementById('discordBtnText');
+    if (!discordInput || !feedback) return;
+
+    const val = discordInput.value.trim().replace(/^@/, '');
+    if (!val) {
+        feedback.className = 'mt-1.5 text-[11px] text-rose-500 font-semibold';
+        feedback.innerHTML = 'Silakan isi username Discord terlebih dahulu.';
+        return;
+    }
+
+    if (btnText) btnText.textContent = 'Mengecek...';
+    feedback.className = 'mt-1.5 text-[11px] text-slate-400';
+    feedback.innerHTML = 'Menghubungi Discord API...';
+
+    try {
+        const res = await window.bnrApi.adminVerifyDiscord(val);
+        if (btnText) btnText.textContent = 'Cek Akun';
+
+        if (res.valid) {
+            lastVerifiedDiscord = res.username;
+            feedback.className = 'mt-1.5 text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold flex items-center space-x-1';
+            feedback.innerHTML = `<span>✓ Akun Discord <strong>@${res.username}</strong> valid & terverifikasi.</span>`;
+        } else {
+            lastVerifiedDiscord = null;
+            feedback.className = 'mt-1.5 text-[11px] text-rose-500 dark:text-rose-400 font-semibold flex items-center space-x-1';
+            feedback.innerHTML = `<span>✕ ${res.message || 'Akun Discord tidak ditemukan / belum terdaftar.'}</span>`;
+        }
+    } catch (err) {
+        if (btnText) btnText.textContent = 'Cek Akun';
+        lastVerifiedDiscord = null;
+        feedback.className = 'mt-1.5 text-[11px] text-rose-500 dark:text-rose-400 font-semibold';
+        feedback.innerHTML = `<span>✕ ${err.message}</span>`;
+    }
+}
+
+async function handleCreateCustomerSubmit(event) {
+    event.preventDefault();
+    const alertBox = document.getElementById('modalAlertBox');
+    const submitBtn = document.getElementById('btnSubmitCustomer');
+    const btnSubmitText = document.getElementById('btnSubmitText');
+
+    const name = document.getElementById('custName').value.trim();
+    const username = document.getElementById('custUsername').value.trim();
+    const discordUsername = document.getElementById('custDiscord').value.trim().replace(/^@/, '');
+    const password = document.getElementById('custPassword').value;
+    const initialBalance = document.getElementById('custBalance').value;
+
+    if (!name || !username || !discordUsername || !password) {
+        if (alertBox) {
+            alertBox.className = 'mb-4 p-3 rounded-2xl text-xs font-semibold bg-rose-50 text-rose-600 border border-rose-200 dark:bg-rose-950/40 dark:text-rose-400 dark:border-rose-900 block';
+            alertBox.textContent = 'Semua bidang bertanda bintang (*) wajib diisi.';
+        }
+        return;
+    }
+
+    // Set loading state
+    if (submitBtn) submitBtn.disabled = true;
+    if (btnSubmitText) btnSubmitText.textContent = 'Mendaftarkan...';
+    if (alertBox) alertBox.className = 'hidden';
+
+    try {
+        const res = await window.bnrApi.adminCreateUser({
+            name,
+            username,
+            discordUsername,
+            password,
+            initialBalance: parseInt(initialBalance, 10) || 0
+        });
+
+        closeCreateCustomerModal();
+
+        Swal.fire({
+            icon: 'success',
+            title: 'Nasabah Berhasil Dibuat!',
+            html: `
+                <div class="text-xs text-left space-y-1.5 p-3.5 bg-slate-50 dark:bg-slate-800 rounded-2xl mt-2 font-mono border border-slate-200 dark:border-slate-700">
+                    <p><strong class="text-slate-400 font-sans">Nama:</strong> ${res.user.name}</p>
+                    <p><strong class="text-slate-400 font-sans">Username:</strong> @${res.user.username}</p>
+                    <p><strong class="text-slate-400 font-sans">Discord:</strong> @${res.user.discordUsername}</p>
+                    <p><strong class="text-slate-400 font-sans">No Rekening:</strong> ${res.user.accountNumber}</p>
+                    <p><strong class="text-slate-400 font-sans">Saldo Awal:</strong> ${formatCurrency(res.user.balance)}</p>
+                </div>
+            `,
+            confirmButtonColor: '#CC0000',
+            confirmButtonText: 'Selesai'
+        });
+
+        renderAdminUsers();
+    } catch (err) {
+        if (submitBtn) submitBtn.disabled = false;
+        if (btnSubmitText) btnSubmitText.textContent = 'Daftarkan Nasabah';
+        if (alertBox) {
+            alertBox.className = 'mb-4 p-3 rounded-2xl text-xs font-semibold bg-rose-50 text-rose-600 border border-rose-200 dark:bg-rose-950/40 dark:text-rose-400 dark:border-rose-900 block';
+            alertBox.textContent = err.message || 'Gagal membuat akun nasabah.';
         }
     }
 }

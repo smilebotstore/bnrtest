@@ -2,6 +2,8 @@
  * Account Controller
  * Handles account details, profile modifications, top-up requests, and notifications.
  */
+const fs = require('fs');
+const path = require('path');
 const db = require('../database/firebaseService');
 const config = require('../../config');
 
@@ -29,6 +31,7 @@ class AccountController {
                     accountNumber: account.accountNumber,
                     ownerName: account.ownerName || user.name,
                     username: user.username,
+                    avatarUrl: user.avatarUrl || null,
                     balance: account.balance || 0,
                     status: account.status,
                     openedAt: account.openedAt,
@@ -195,6 +198,82 @@ class AccountController {
         } catch (err) {
             console.error('[Mark Read Error]', err);
             return res.status(500).json({ success: false, message: 'Gagal memperbarui status notifikasi.' });
+        }
+    }
+
+    // Upload / update profile avatar
+    async uploadAvatar(req, res) {
+        try {
+            const { avatar } = req.body;
+            if (!avatar || typeof avatar !== 'string') {
+                return res.status(400).json({ success: false, message: 'Data foto profil wajib disertakan.' });
+            }
+
+            // Verify base64 image data URL (PNG, JPG/JPEG, WEBP)
+            const matches = avatar.match(/^data:image\/(png|jpeg|jpg|webp);base64,(.+)$/i);
+            if (!matches) {
+                return res.status(400).json({ success: false, message: 'Format foto harus berupa PNG, JPG, atau WebP.' });
+            }
+
+            const rawExt = matches[1].toLowerCase();
+            const ext = rawExt === 'jpeg' ? 'jpg' : rawExt;
+            const buffer = Buffer.from(matches[2], 'base64');
+
+            // Maximum limit 4MB
+            if (buffer.length > 4 * 1024 * 1024) {
+                return res.status(400).json({ success: false, message: 'Ukuran foto maksimal 4MB.' });
+            }
+
+            const username = req.user.username;
+            const fileName = `avatar_${username}_${Date.now()}.${ext}`;
+            const uploadsDir = path.join(__dirname, '..', '..', 'public', 'uploads', 'avatars');
+
+            let finalAvatarUrl = avatar; // fallback: data URI for serverless/read-only environments
+
+            try {
+                if (!fs.existsSync(uploadsDir)) {
+                    fs.mkdirSync(uploadsDir, { recursive: true });
+                }
+                const filePath = path.join(uploadsDir, fileName);
+                fs.writeFileSync(filePath, buffer);
+                finalAvatarUrl = `/uploads/avatars/${fileName}`;
+            } catch (fsErr) {
+                console.warn('[Avatar FS Save Warning]', fsErr.message);
+                // Keep finalAvatarUrl as data URI if filesystem cannot be written
+            }
+
+            // Save to Firebase database under user profile
+            await db.update(`users/${username}`, { avatarUrl: finalAvatarUrl });
+
+            // Audit Log
+            await db.logAudit(username, 'UPDATE_AVATAR', 'Memperbarui foto profil akun');
+
+            return res.json({
+                success: true,
+                message: 'Foto profil berhasil diperbarui.',
+                avatarUrl: finalAvatarUrl
+            });
+        } catch (err) {
+            console.error('[Upload Avatar Error]', err);
+            return res.status(500).json({ success: false, message: 'Gagal mengunggah foto profil.' });
+        }
+    }
+
+    // Remove custom profile avatar and revert to default initials
+    async removeAvatar(req, res) {
+        try {
+            const username = req.user.username;
+            await db.update(`users/${username}`, { avatarUrl: null });
+            await db.logAudit(username, 'REMOVE_AVATAR', 'Menghapus foto profil (kembali ke inisial nama)');
+
+            return res.json({
+                success: true,
+                message: 'Foto profil berhasil dihapus. Kembali menggunakan inisial nama.',
+                avatarUrl: null
+            });
+        } catch (err) {
+            console.error('[Remove Avatar Error]', err);
+            return res.status(500).json({ success: false, message: 'Gagal menghapus foto profil.' });
         }
     }
 }

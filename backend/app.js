@@ -25,8 +25,8 @@ app.use((req, res, next) => {
 
 // Middlewares
 app.use(cors());
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // Ensure Super Admin exists in the database on startup
 db.ensureSuperAdminExists().catch(err => console.error('[Init Admin Error]', err));
@@ -40,6 +40,8 @@ app.get('/api/auth/me', verifyToken, (req, res) => authController.getMe(req, res
 app.post('/api/auth/logout', (req, res) => authController.logout(req, res));
 app.get('/api/account/details', verifyToken, (req, res) => accountController.getDetails(req, res));
 app.post('/api/account/change-name', verifyToken, (req, res) => accountController.changeName(req, res));
+app.post('/api/account/avatar', verifyToken, (req, res) => accountController.uploadAvatar(req, res));
+app.delete('/api/account/avatar', verifyToken, (req, res) => accountController.removeAvatar(req, res));
 app.post('/api/account/topup-request', verifyToken, (req, res) => accountController.requestTopUp(req, res));
 app.get('/api/notifications', verifyToken, (req, res) => accountController.getNotifications(req, res));
 app.post('/api/notifications/mark-read', verifyToken, (req, res) => accountController.markNotificationsAsRead(req, res));
@@ -52,6 +54,7 @@ app.get('/api/transactions/history', verifyToken, (req, res) => transactionContr
 app.get('/api/admin/overview', verifyToken, requireAdmin, (req, res) => adminController.getOverview(req, res));
 app.get('/api/admin/users', verifyToken, requireAdmin, (req, res) => adminController.getUsers(req, res));
 app.post('/api/admin/users/create', verifyToken, requireAdmin, (req, res) => adminController.createUser(req, res));
+app.post('/api/admin/verify-discord', verifyToken, requireAdmin, (req, res) => adminController.verifyDiscord(req, res));
 app.post('/api/admin/users/toggle-status', verifyToken, requireAdmin, (req, res) => adminController.toggleUserStatus(req, res));
 app.post('/api/admin/users/adjust-balance', verifyToken, requireAdmin, (req, res) => adminController.adjustBalance(req, res));
 app.get('/api/admin/topups', verifyToken, requireAdmin, (req, res) => adminController.getTopUps(req, res));

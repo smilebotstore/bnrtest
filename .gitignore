@@ -21,3 +21,7 @@ Thumbs.db
 # Temp files
 *.tmp
 *.log
+
+# Uploaded media
+public/uploads/avatars/*
+!public/uploads/avatars/.gitkeep

@@ -1,4 +1,25 @@
-<meta name="apple-mobile-web-app-capable" content="yes"> is deprecated. Please include <meta name="mobile-web-app-capable" content="yes">
-The FetchEvent for "http://localhost:3000/mutasi" resulted in a network error response: the promise was rejected.
-sw.js:51  Uncaught (in promise) TypeError: Failed to fetch
-    at sw.js:51:20
+terus di bagian profil saya itu di bagian profile akun user yang background merah berawalan inisial nah itu kamu
+  tambahkan tombol upload foto dengan icon nya juga, tata letak tombolnya di bawah kanan terus dia di perbatasan profil
+  bulat dan diluar bulatan itu juga, paham gak nah foto yang diupload user itu simpan di backend aja, tapi basenya saat
+  user belum menambahkan foto profil sendiri, dia tetap menampilkan inisial nama saja terus bagian form buat nasabah baru itu perbagus lagi elemen nya, itu masih elemen basic banget 
+terus juga tambahkan kolom baru form nasabah baru iaitu username discord nah itu juga harus valid jadi website akan cek ke api discord dulu info akun, jika valid baru diizinkan bikin dan jika ga valid maka ada eror terus pembuatan akun itu juga ada logsnya jadi masuknya ke audit logs webhook discord, audit logs website juga ada, informasinya ada 
+
+
+Pembuat : {usernameakunadmin}
+Waktu : {formatwaktumengikutitransactionlogs} 
+
+detail akun 
+
+username : 
+no. rekening : 
+atas nama : 
+
+
+format logs sama kayak transaction log juga
+
+
+
+terus pas suspended dan diaktifkan kembali akun juga ada logs nya ke kirim ke discord nah info nya sama kayak logs pembuatan akun yang saya sertakan diatas itu, audit logs di website udah ada jadi jangan ubah apa apa
+
+
+nah sistem logs saya sebutkan diatas semuanya masuk ke dalam audit log webhook ya sama kayak logs login dan logout bukan di transaction log

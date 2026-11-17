@@ -145,6 +145,19 @@ class BnrApiClient {
         });
     }
 
+    async uploadAvatar(avatar) {
+        return await this.request('/api/account/avatar', {
+            method: 'POST',
+            body: JSON.stringify({ avatar })
+        });
+    }
+
+    async removeAvatar() {
+        return await this.request('/api/account/avatar', {
+            method: 'DELETE'
+        });
+    }
+
     async requestTopUp(amount, note) {
         return await this.request('/api/account/topup-request', {
             method: 'POST',
@@ -175,6 +188,13 @@ class BnrApiClient {
         return await this.request('/api/admin/users/create', {
             method: 'POST',
             body: JSON.stringify(userData)
+        });
+    }
+
+    async adminVerifyDiscord(discordUsername) {
+        return await this.request('/api/admin/verify-discord', {
+            method: 'POST',
+            body: JSON.stringify({ discordUsername })
         });
     }
 

@@ -132,7 +132,8 @@ class AuthController {
                     username: user.username,
                     name: user.name,
                     role: user.role,
-                    accountNumber: user.accountNumber
+                    accountNumber: user.accountNumber,
+                    avatarUrl: user.avatarUrl || null
                 }
             });
         } catch (err) {
@@ -223,7 +224,8 @@ class AuthController {
                     name: user.name,
                     role: user.role,
                     accountNumber: user.accountNumber,
-                    createdAt: user.createdAt
+                    createdAt: user.createdAt,
+                    avatarUrl: user.avatarUrl || null
                 },
                 account: account || {
                     accountNumber: user.accountNumber,

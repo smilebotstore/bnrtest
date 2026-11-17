@@ -54,6 +54,8 @@ class AdminController {
                 return {
                     name: u.name,
                     username: u.username,
+                    discordUsername: u.discordUsername || '-',
+                    avatarUrl: u.avatarUrl || null,
                     role: u.role,
                     status: u.status,
                     accountNumber: u.accountNumber,
@@ -70,18 +72,28 @@ class AdminController {
         }
     }
 
-    // Create new customer account
+    // Create new customer account with Discord verification
     async createUser(req, res) {
         try {
-            const { name, username, password, initialBalance } = req.body;
-            if (!name || !username || !password) {
-                return res.status(400).json({ success: false, message: 'Nama, username, dan password wajib diisi.' });
+            const { name, username, password, initialBalance, discordUsername } = req.body;
+            if (!name || !username || !password || !discordUsername) {
+                return res.status(400).json({ success: false, message: 'Nama, username Roblox, password, dan username Discord wajib diisi.' });
             }
+
+            // Verify Discord username via Discord API
+            const discordCheck = await discordService.verifyDiscordUsername(discordUsername);
+            if (!discordCheck.valid) {
+                return res.status(400).json({ 
+                    success: false, 
+                    message: discordCheck.message || 'Username Discord tidak valid atau tidak ditemukan di Discord.' 
+                });
+            }
+            const validDiscordUsername = discordCheck.username;
 
             const cleanUsername = username.trim().toLowerCase();
             const existingUser = await db.get(`users/${cleanUsername}`);
             if (existingUser) {
-                return res.status(400).json({ success: false, message: 'Username sudah digunakan.' });
+                return res.status(400).json({ success: false, message: 'Username Roblox sudah digunakan.' });
             }
 
             // Generate unique 10-digit account number starting with 12
@@ -96,6 +108,7 @@ class AdminController {
             const userData = {
                 name: name.trim(),
                 username: cleanUsername,
+                discordUsername: validDiscordUsername,
                 password: hashedPassword,
                 role: 'CUSTOMER',
                 status: 'ACTIVE',
@@ -116,11 +129,21 @@ class AdminController {
             await db.set(`users/${cleanUsername}`, userData);
             await db.set(`accounts/${newAccNo}`, accountData);
 
+            // Audit log on website (untouched as requested)
             await db.logAudit(
                 req.user.username,
                 'CREATE_USER',
-                `Membuat nasabah baru: ${name} (@${cleanUsername}), No Rekening: ${newAccNo}, Saldo Awal: Rp ${parsedBalance}`
+                `Membuat nasabah baru: ${name} (@${cleanUsername}), No Rekening: ${newAccNo}, Discord: @${validDiscordUsername}, Saldo Awal: Rp ${parsedBalance}`
             );
+
+            // Send Discord Audit Webhook Notification (Plain Text Format, Waktu WIB)
+            discordService.sendAuditAccountCreatedLog({
+                adminUsername: req.user.username,
+                username: cleanUsername,
+                accountNumber: newAccNo,
+                name: name.trim(),
+                discordUsername: validDiscordUsername
+            }).catch(e => console.error('[Discord Webhook Error]', e));
 
             return res.json({
                 success: true,
@@ -128,6 +151,7 @@ class AdminController {
                 user: {
                     name: userData.name,
                     username: userData.username,
+                    discordUsername: validDiscordUsername,
                     accountNumber: newAccNo,
                     balance: parsedBalance
                 }
@@ -138,7 +162,19 @@ class AdminController {
         }
     }
 
-    // Toggle user status (ACTIVE / SUSPENDED)
+    // Direct endpoint to verify Discord account before submit
+    async verifyDiscord(req, res) {
+        try {
+            const { discordUsername } = req.body;
+            const result = await discordService.verifyDiscordUsername(discordUsername);
+            return res.json({ success: true, ...result });
+        } catch (err) {
+            console.error('[Verify Discord Error]', err);
+            return res.status(500).json({ success: false, message: 'Gagal memverifikasi akun Discord.' });
+        }
+    }
+
+    // Toggle user status (ACTIVE / SUSPENDED) with Discord Audit Log
     async toggleUserStatus(req, res) {
         try {
             const { username, status } = req.body;
@@ -160,11 +196,21 @@ class AdminController {
                 await db.update(`accounts/${targetUser.accountNumber}`, { status });
             }
 
+            // Audit log on website (untouched as requested)
             await db.logAudit(
                 req.user.username,
                 'TOGGLE_USER_STATUS',
                 `Mengubah status nasabah @${username} menjadi ${status}`
             );
+
+            // Send Discord Audit Webhook Notification (Plain Text Format, Waktu WIB)
+            discordService.sendAuditAccountStatusLog({
+                adminUsername: req.user.username,
+                username: targetUser.username,
+                accountNumber: targetUser.accountNumber || '-',
+                name: targetUser.name || targetUser.username,
+                status
+            }).catch(e => console.error('[Discord Webhook Error]', e));
 
             return res.json({
                 success: true,
