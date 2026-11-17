@@ -385,38 +385,59 @@ function renderSidebarAndNav() {
         menuItems.push({ id: 'admin', label: 'Admin Panel', icon: 'shield', highlight: true });
     }
 
-    // Desktop Sidebar Menu
+    const getThemeToggleHtml = (id, textSizeClass = 'text-xs') => `
+        <button id="${id}" onclick="window.bnrTheme.toggleTheme()" class="theme-toggle-btn w-full flex items-center justify-between px-3 py-2.5 rounded-xl ${textSizeClass} transition text-slate-400 hover:text-white hover:bg-slate-800">
+            <div class="flex items-center space-x-3">
+                <i data-lucide="moon" class="theme-icon w-4 h-4 text-amber-400"></i>
+                <span class="theme-label">Mode Tampilan</span>
+            </div>
+            <span class="text-[10px] bg-slate-800 border border-slate-700/60 px-2 py-0.5 rounded text-slate-400">Ganti</span>
+        </button>
+    `;
+
+    // Desktop Sidebar Menu (Theme toggle placed directly below "Profil Saya")
     if (sidebarMenu) {
-        sidebarMenu.innerHTML = menuItems.map(item => {
+        let html = '';
+        menuItems.forEach(item => {
             const isActive = currentView === item.id;
             const activeClass = isActive ? 'bg-bnr-red text-white font-semibold' : 'text-slate-400 hover:text-white hover:bg-slate-800';
             const badge = item.highlight ? `<span class="ml-auto bg-amber-500/20 text-amber-300 text-[10px] px-1.5 py-0.5 rounded font-mono">ADMIN</span>` : '';
-            return `
+            html += `
                 <button onclick="navigateTo('${item.id}')" class="w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl text-xs transition ${activeClass}">
                     <i data-lucide="${item.icon}" class="w-4 h-4"></i>
                     <span>${item.label}</span>
                     ${badge}
                 </button>
             `;
-        }).join('');
+            if (item.id === 'profile') {
+                html += getThemeToggleHtml('sidebarThemeToggle', 'text-xs');
+            }
+        });
+        sidebarMenu.innerHTML = html;
     }
 
-    // Inject Dark Mode Button into Desktop Sidebar (Under Profile) if not already added
-    ensureThemeToggleButton();
-
-    // Mobile Drawer Menu
+    // Mobile Drawer Menu (Theme toggle placed directly below "Profil Saya")
     if (mobileDrawerMenu) {
-        mobileDrawerMenu.innerHTML = menuItems.map(item => {
+        let html = '';
+        menuItems.forEach(item => {
             const isActive = currentView === item.id;
             const activeClass = isActive ? 'bg-bnr-red text-white font-semibold' : 'text-slate-400 hover:text-white hover:bg-slate-800';
-            return `
+            const badge = item.highlight ? `<span class="ml-auto bg-amber-500/20 text-amber-300 text-[10px] px-1.5 py-0.5 rounded font-mono">ADMIN</span>` : '';
+            html += `
                 <button onclick="navigateTo('${item.id}')" class="w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl text-sm transition ${activeClass}">
                     <i data-lucide="${item.icon}" class="w-5 h-5"></i>
                     <span>${item.label}</span>
+                    ${badge}
                 </button>
             `;
-        }).join('');
+            if (item.id === 'profile') {
+                html += getThemeToggleHtml('drawerThemeToggle', 'text-sm');
+            }
+        });
+        mobileDrawerMenu.innerHTML = html;
     }
+
+    ensureThemeToggleButton();
 
     // Mobile Bottom Navigation (Active item turns RED as requested!)
     if (mobileBottomNav) {
@@ -447,40 +468,14 @@ function renderSidebarAndNav() {
 }
 
 function ensureThemeToggleButton() {
-    // 1. Sidebar desktop placement (under profile button)
-    const sidebarFooter = document.querySelector('#desktopSidebar .p-4.border-t');
-    if (sidebarFooter && !sidebarFooter.querySelector('#sidebarThemeToggle')) {
-        const toggleHtml = `
-            <button id="sidebarThemeToggle" onclick="window.bnrTheme.toggleTheme()" class="w-full flex items-center justify-between px-3 py-2 mb-2 text-xs font-medium text-slate-300 hover:text-white bg-slate-900 hover:bg-slate-800 rounded-xl border border-slate-800 transition">
-                <div class="flex items-center space-x-2">
-                    <i data-lucide="moon" class="theme-icon w-4 h-4 text-amber-400"></i>
-                    <span class="theme-label">Mode Tampilan</span>
-                </div>
-                <span class="text-[10px] bg-slate-800 px-2 py-0.5 rounded text-slate-400">Ganti</span>
-            </button>
-        `;
-        const logoutBtn = sidebarFooter.querySelector('button[onclick*="confirmLogout"]');
-        if (logoutBtn) {
-            logoutBtn.insertAdjacentHTML('beforebegin', toggleHtml);
-        }
-    }
+    // Clean up any stray theme toggle buttons from footers
+    const oldSidebarBtn = document.querySelector('#desktopSidebar .p-4.border-t #sidebarThemeToggle');
+    if (oldSidebarBtn) oldSidebarBtn.remove();
+    const oldDrawerBtn = document.querySelector('#mobileDrawer .pt-4.border-t #drawerThemeToggle');
+    if (oldDrawerBtn) oldDrawerBtn.remove();
 
-    // 2. Mobile drawer placement (under profile info)
-    const drawerFooter = document.querySelector('#mobileDrawer .pt-4.border-t');
-    if (drawerFooter && !drawerFooter.querySelector('#drawerThemeToggle')) {
-        const toggleHtml = `
-            <button id="drawerThemeToggle" onclick="window.bnrTheme.toggleTheme()" class="w-full flex items-center justify-between px-3 py-2 mb-2 text-xs font-medium text-slate-300 hover:text-white bg-slate-800/80 rounded-xl transition">
-                <div class="flex items-center space-x-2">
-                    <i data-lucide="moon" class="theme-icon w-4 h-4 text-amber-400"></i>
-                    <span class="theme-label">Mode Tampilan</span>
-                </div>
-                <span class="text-[10px] bg-slate-700 px-2 py-0.5 rounded text-slate-300">Ganti</span>
-            </button>
-        `;
-        const logoutBtn = drawerFooter.querySelector('button[onclick*="confirmLogout"]');
-        if (logoutBtn) {
-            logoutBtn.insertAdjacentHTML('beforebegin', toggleHtml);
-        }
+    if (window.bnrTheme) {
+        window.bnrTheme.updateThemeButtons(window.bnrTheme.getPreferredTheme());
     }
 }
 
