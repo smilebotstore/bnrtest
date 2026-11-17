@@ -1368,12 +1368,7 @@ async function renderAdminUsers() {
     }
 }
 
-let discordCheckTimer = null;
-let discordValidationState = { checked: false, valid: false, username: '', error: '' };
-
 function openCreateCustomerModal() {
-    discordValidationState = { checked: false, valid: false, username: '', error: '' };
-    clearTimeout(discordCheckTimer);
     const container = document.getElementById('appModalContainer');
     if (!container) return;
 
@@ -1425,24 +1420,17 @@ function openCreateCustomerModal() {
                         </div>
                     </div>
 
-                    <!-- Username Discord (Validasi Otomatis API Discord) -->
+                    <!-- Username Discord -->
                     <div>
-                        <div class="flex items-center justify-between mb-1.5">
-                            <label class="block text-xs font-bold text-slate-700 dark:text-slate-300">
-                                Username Discord <span class="text-rose-500">*</span>
-                            </label>
-                            <span class="text-[10px] text-slate-400">Verifikasi Otomatis Discord</span>
-                        </div>
+                        <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                            Username Discord <span class="text-rose-500">*</span>
+                        </label>
                         <div class="relative flex items-center">
                             <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
                                 <i data-lucide="message-square" class="w-4 h-4"></i>
                             </span>
-                            <input type="text" id="custDiscord" required placeholder="cth. haruukii" oninput="handleDiscordAutoCheck(this.value)"
-                                class="w-full pl-10 pr-10 py-2.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/80 rounded-2xl text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-bnr-red transition">
-                            <span id="discordCheckIcon" class="absolute inset-y-0 right-0 pr-3.5 flex items-center pointer-events-none"></span>
-                        </div>
-                        <div id="discordFeedback" class="mt-1.5 text-[11px] text-slate-400 flex items-center space-x-1">
-                            <span>Otomatis divalidasi ke server Discord resmi.</span>
+                            <input type="text" id="custDiscord" required placeholder="cth. haruukii"
+                                class="w-full pl-10 pr-4 py-2.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/80 rounded-2xl text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-bnr-red transition">
                         </div>
                     </div>
 
@@ -1512,72 +1500,6 @@ function handleCustomerModalBackdrop(e) {
     }
 }
 
-function handleDiscordAutoCheck(val) {
-    clearTimeout(discordCheckTimer);
-    const feedback = document.getElementById('discordFeedback');
-    const icon = document.getElementById('discordCheckIcon');
-    const clean = val.trim().replace(/^@/, '');
-
-    if (!clean) {
-        discordValidationState = { checked: false, valid: false, username: '', error: '' };
-        if (feedback) {
-            feedback.className = 'mt-1.5 text-[11px] text-slate-400 flex items-center space-x-1';
-            feedback.innerHTML = '<span>Otomatis divalidasi ke server Discord resmi.</span>';
-        }
-        if (icon) icon.innerHTML = '';
-        return;
-    }
-
-    if (clean.length < 2) {
-        discordValidationState = { checked: true, valid: false, username: clean, error: 'Minimal 2 karakter' };
-        if (feedback) {
-            feedback.className = 'mt-1.5 text-[11px] text-rose-500 font-medium flex items-center space-x-1';
-            feedback.innerHTML = '<i data-lucide="alert-circle" class="w-3.5 h-3.5 flex-shrink-0"></i><span>Username Discord minimal 2 karakter.</span>';
-        }
-        if (icon) icon.innerHTML = '<i data-lucide="alert-circle" class="w-4 h-4 text-rose-500"></i>';
-        lucide.createIcons();
-        return;
-    }
-
-    if (feedback) {
-        feedback.className = 'mt-1.5 text-[11px] text-slate-400 flex items-center space-x-1';
-        feedback.innerHTML = '<span>Memeriksa akun ke Discord...</span>';
-    }
-    if (icon) {
-        icon.innerHTML = '<svg class="animate-spin w-4 h-4 text-bnr-red" viewBox="0 0 24 24" fill="none"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path></svg>';
-    }
-
-    discordCheckTimer = setTimeout(async () => {
-        try {
-            const res = await window.bnrApi.adminVerifyDiscord(clean);
-            if (res.valid) {
-                discordValidationState = { checked: true, valid: true, username: res.username, error: '' };
-                if (feedback) {
-                    feedback.className = 'mt-1.5 text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold flex items-center space-x-1';
-                    feedback.innerHTML = `<i data-lucide="check-circle" class="w-3.5 h-3.5 flex-shrink-0"></i><span>✓ Akun Discord <strong>@${res.username}</strong> ditemukan & terdaftar.</span>`;
-                }
-                if (icon) icon.innerHTML = '<i data-lucide="check-circle" class="w-4 h-4 text-emerald-500"></i>';
-            } else {
-                discordValidationState = { checked: true, valid: false, username: clean, error: res.message };
-                if (feedback) {
-                    feedback.className = 'mt-1.5 text-[11px] text-rose-500 dark:text-rose-400 font-semibold flex items-center space-x-1';
-                    feedback.innerHTML = `<i data-lucide="x-circle" class="w-3.5 h-3.5 flex-shrink-0"></i><span>✕ ${res.message || 'Akun Discord tidak ditemukan atau belum terdaftar.'}</span>`;
-                }
-                if (icon) icon.innerHTML = '<i data-lucide="x-circle" class="w-4 h-4 text-rose-500"></i>';
-            }
-            lucide.createIcons();
-        } catch (err) {
-            discordValidationState = { checked: true, valid: false, username: clean, error: err.message };
-            if (feedback) {
-                feedback.className = 'mt-1.5 text-[11px] text-rose-500 dark:text-rose-400 font-semibold flex items-center space-x-1';
-                feedback.innerHTML = `<i data-lucide="alert-circle" class="w-3.5 h-3.5 flex-shrink-0"></i><span>✕ ${err.message}</span>`;
-            }
-            if (icon) icon.innerHTML = '<i data-lucide="alert-circle" class="w-4 h-4 text-rose-500"></i>';
-            lucide.createIcons();
-        }
-    }, 400);
-}
-
 function togglePasswordModalVisibility() {
     const pwd = document.getElementById('custPassword');
     const icon = document.getElementById('custEyeIcon');
@@ -1612,52 +1534,16 @@ async function handleCreateCustomerSubmit(event) {
         return;
     }
 
-    // Set loading state
+    // Set loading state on submit button only when creating
     if (submitBtn) submitBtn.disabled = true;
-    if (btnSubmitText) btnSubmitText.textContent = 'Mengecek Discord...';
-    if (alertBox) alertBox.className = 'hidden';
-
-    // Automatic check of Discord username before submission
-    const cleanDiscord = discordUsername.trim().replace(/^@/, '');
-    if (!discordValidationState.checked || discordValidationState.username !== cleanDiscord) {
-        try {
-            const checkRes = await window.bnrApi.adminVerifyDiscord(cleanDiscord);
-            if (!checkRes.valid) {
-                if (submitBtn) submitBtn.disabled = false;
-                if (btnSubmitText) btnSubmitText.textContent = 'Daftarkan Nasabah';
-                if (alertBox) {
-                    alertBox.className = 'mb-4 p-3 rounded-2xl text-xs font-semibold bg-rose-50 text-rose-600 border border-rose-200 dark:bg-rose-950/40 dark:text-rose-400 dark:border-rose-900 block';
-                    alertBox.textContent = checkRes.message || `Akun Discord @${cleanDiscord} tidak ditemukan atau belum terdaftar di Discord.`;
-                }
-                return;
-            }
-            discordValidationState = { checked: true, valid: true, username: checkRes.username, error: '' };
-        } catch (e) {
-            if (submitBtn) submitBtn.disabled = false;
-            if (btnSubmitText) btnSubmitText.textContent = 'Daftarkan Nasabah';
-            if (alertBox) {
-                alertBox.className = 'mb-4 p-3 rounded-2xl text-xs font-semibold bg-rose-50 text-rose-600 border border-rose-200 dark:bg-rose-950/40 dark:text-rose-400 dark:border-rose-900 block';
-                alertBox.textContent = e.message || 'Gagal memverifikasi akun Discord.';
-            }
-            return;
-        }
-    } else if (!discordValidationState.valid) {
-        if (submitBtn) submitBtn.disabled = false;
-        if (btnSubmitText) btnSubmitText.textContent = 'Daftarkan Nasabah';
-        if (alertBox) {
-            alertBox.className = 'mb-4 p-3 rounded-2xl text-xs font-semibold bg-rose-50 text-rose-600 border border-rose-200 dark:bg-rose-950/40 dark:text-rose-400 dark:border-rose-900 block';
-            alertBox.textContent = discordValidationState.error || `Akun Discord @${cleanDiscord} tidak ditemukan atau belum terdaftar di Discord.`;
-        }
-        return;
-    }
-
     if (btnSubmitText) btnSubmitText.textContent = 'Mendaftarkan...';
+    if (alertBox) alertBox.className = 'hidden';
 
     try {
         const res = await window.bnrApi.adminCreateUser({
             name,
             username,
-            discordUsername: cleanDiscord,
+            discordUsername,
             password,
             initialBalance: parseInt(initialBalance, 10) || 0
         });
