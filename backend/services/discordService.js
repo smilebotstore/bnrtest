@@ -109,9 +109,15 @@ class DiscordService {
             return { valid: false, message: 'Username Discord wajib diisi.' };
         }
 
-        const clean = discordUsername.trim().replace(/^@/, '');
+        const clean = discordUsername.trim().replace(/^@/, '').toLowerCase();
         if (clean.length < 2 || clean.length > 32) {
             return { valid: false, message: 'Panjang username Discord harus antara 2 hingga 32 karakter.' };
+        }
+
+        // Allowed characters in Discord handles: lowercase letters, numbers, dot, underscore
+        const DISCORD_HANDLE_REGEX = /^[a-z0-9_.]+$/;
+        if (!DISCORD_HANDLE_REGEX.test(clean)) {
+            return { valid: false, message: 'Username Discord hanya boleh menggunakan huruf kecil, angka, titik (.), atau garis bawah (_).' };
         }
 
         try {
@@ -128,12 +134,12 @@ class DiscordService {
 
             // taken: true means the username is already registered and taken by an existing Discord user
             if (data && data.taken === true) {
-                return { valid: true, username: clean, message: 'Username Discord valid dan terdaftar.' };
+                return { valid: true, username: clean, message: 'Akun Discord valid dan terdaftar.' };
             }
 
             // taken: false means username does not exist on Discord
             if (data && data.taken === false) {
-                return { valid: false, message: `Akun Discord @${clean} tidak ditemukan atau belum terdaftar.` };
+                return { valid: false, message: `Akun Discord @${clean} tidak ditemukan atau belum terdaftar di Discord.` };
             }
 
             // Discord returned validation errors
@@ -158,7 +164,7 @@ class DiscordService {
 
         const waktuWIB = `${new Date().toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' })} WIB`;
         const payload = {
-            content: `**BNR | AUDIT LOG - PEMBUATAN AKUN**\n\`\`\`BNR | NASABAH BARU DIBUAT\n\nPembuat : ${adminUsername}\nWaktu : ${waktuWIB}\n\ndetail akun\n\nusername : @${username}\nno. rekening : ${accountNumber}\natas nama : ${name}\ndiscord : @${discordUsername}\`\`\``
+            content: `**BNR | AUDIT LOG - PEMBUATAN AKUN**\n\`\`\`BNR | NASABAH BARU DIBUAT\n\nPembuat : ${adminUsername}\nWaktu : ${waktuWIB}\n\nDetail Akun\n\nUsername : @${username}\nNo. Rekening : ${accountNumber}\nAtas Nama : ${name}\nUsername Discord : @${discordUsername}\`\`\``
         };
 
         try {
@@ -188,7 +194,7 @@ class DiscordService {
         const actionName = status === 'SUSPENDED' ? 'SUSPENDED' : 'DIAKTIFKAN KEMBALI';
         const waktuWIB = `${new Date().toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' })} WIB`;
         const payload = {
-            content: `**BNR | AUDIT LOG - AKUN ${actionName}**\n\`\`\`BNR | PERUBAHAN STATUS AKUN\n\nPembuat : ${adminUsername}\nWaktu : ${waktuWIB}\n\ndetail akun\n\nusername : @${username}\nno. rekening : ${accountNumber}\natas nama : ${name}\nstatus : ${status}\`\`\``
+            content: `**BNR | AUDIT LOG - AKUN ${actionName}**\n\`\`\`BNR | PERUBAHAN STATUS AKUN\n\nPembuat : ${adminUsername}\nWaktu : ${waktuWIB}\n\nDetail Akun\n\nUsername : @${username}\nNo. Rekening : ${accountNumber}\nAtas Nama : ${name}\nStatus : ${status}\`\`\``
         };
 
         try {

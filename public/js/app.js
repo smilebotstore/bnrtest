@@ -1368,11 +1368,12 @@ async function renderAdminUsers() {
     }
 }
 
-// Beautified Modern Modal for Creating New Customer with Discord Verification
-let lastVerifiedDiscord = null;
+let discordCheckTimer = null;
+let discordValidationState = { checked: false, valid: false, username: '', error: '' };
 
 function openCreateCustomerModal() {
-    lastVerifiedDiscord = null;
+    discordValidationState = { checked: false, valid: false, username: '', error: '' };
+    clearTimeout(discordCheckTimer);
     const container = document.getElementById('appModalContainer');
     if (!container) return;
 
@@ -1424,27 +1425,24 @@ function openCreateCustomerModal() {
                         </div>
                     </div>
 
-                    <!-- Username Discord (Validasi API Discord) -->
+                    <!-- Username Discord (Validasi Otomatis API Discord) -->
                     <div>
                         <div class="flex items-center justify-between mb-1.5">
                             <label class="block text-xs font-bold text-slate-700 dark:text-slate-300">
                                 Username Discord <span class="text-rose-500">*</span>
                             </label>
-                            <span class="text-[10px] text-slate-400">Verifikasi Server Discord</span>
+                            <span class="text-[10px] text-slate-400">Verifikasi Otomatis Discord</span>
                         </div>
                         <div class="relative flex items-center">
                             <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
                                 <i data-lucide="message-square" class="w-4 h-4"></i>
                             </span>
-                            <input type="text" id="custDiscord" required placeholder="cth. haruukii" oninput="handleDiscordInput(this.value)"
-                                class="w-full pl-10 pr-24 py-2.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/80 rounded-2xl text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-bnr-red transition">
-                            <button type="button" id="btnCheckDiscord" onclick="verifyDiscordInModal()"
-                                class="absolute right-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-white dark:bg-slate-700 dark:hover:bg-slate-600 rounded-xl text-[11px] font-semibold transition">
-                                <span id="discordBtnText">Cek Akun</span>
-                            </button>
+                            <input type="text" id="custDiscord" required placeholder="cth. haruukii" oninput="handleDiscordAutoCheck(this.value)"
+                                class="w-full pl-10 pr-10 py-2.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/80 rounded-2xl text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-bnr-red transition">
+                            <span id="discordCheckIcon" class="absolute inset-y-0 right-0 pr-3.5 flex items-center pointer-events-none"></span>
                         </div>
-                        <div id="discordFeedback" class="mt-1.5 text-[11px] text-slate-500 dark:text-slate-400">
-                            Username akan divalidasi ke server resmi Discord sebelum akun dibuat.
+                        <div id="discordFeedback" class="mt-1.5 text-[11px] text-slate-400 flex items-center space-x-1">
+                            <span>Otomatis divalidasi ke server Discord resmi.</span>
                         </div>
                     </div>
 
@@ -1514,13 +1512,70 @@ function handleCustomerModalBackdrop(e) {
     }
 }
 
-function handleDiscordInput(val) {
-    lastVerifiedDiscord = null;
+function handleDiscordAutoCheck(val) {
+    clearTimeout(discordCheckTimer);
     const feedback = document.getElementById('discordFeedback');
-    if (feedback) {
-        feedback.className = 'mt-1.5 text-[11px] text-slate-500 dark:text-slate-400';
-        feedback.innerHTML = 'Username akan divalidasi ke server resmi Discord sebelum akun dibuat.';
+    const icon = document.getElementById('discordCheckIcon');
+    const clean = val.trim().replace(/^@/, '');
+
+    if (!clean) {
+        discordValidationState = { checked: false, valid: false, username: '', error: '' };
+        if (feedback) {
+            feedback.className = 'mt-1.5 text-[11px] text-slate-400 flex items-center space-x-1';
+            feedback.innerHTML = '<span>Otomatis divalidasi ke server Discord resmi.</span>';
+        }
+        if (icon) icon.innerHTML = '';
+        return;
     }
+
+    if (clean.length < 2) {
+        discordValidationState = { checked: true, valid: false, username: clean, error: 'Minimal 2 karakter' };
+        if (feedback) {
+            feedback.className = 'mt-1.5 text-[11px] text-rose-500 font-medium flex items-center space-x-1';
+            feedback.innerHTML = '<i data-lucide="alert-circle" class="w-3.5 h-3.5 flex-shrink-0"></i><span>Username Discord minimal 2 karakter.</span>';
+        }
+        if (icon) icon.innerHTML = '<i data-lucide="alert-circle" class="w-4 h-4 text-rose-500"></i>';
+        lucide.createIcons();
+        return;
+    }
+
+    if (feedback) {
+        feedback.className = 'mt-1.5 text-[11px] text-slate-400 flex items-center space-x-1';
+        feedback.innerHTML = '<span>Memeriksa akun ke Discord...</span>';
+    }
+    if (icon) {
+        icon.innerHTML = '<svg class="animate-spin w-4 h-4 text-bnr-red" viewBox="0 0 24 24" fill="none"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path></svg>';
+    }
+
+    discordCheckTimer = setTimeout(async () => {
+        try {
+            const res = await window.bnrApi.adminVerifyDiscord(clean);
+            if (res.valid) {
+                discordValidationState = { checked: true, valid: true, username: res.username, error: '' };
+                if (feedback) {
+                    feedback.className = 'mt-1.5 text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold flex items-center space-x-1';
+                    feedback.innerHTML = `<i data-lucide="check-circle" class="w-3.5 h-3.5 flex-shrink-0"></i><span>✓ Akun Discord <strong>@${res.username}</strong> ditemukan & terdaftar.</span>`;
+                }
+                if (icon) icon.innerHTML = '<i data-lucide="check-circle" class="w-4 h-4 text-emerald-500"></i>';
+            } else {
+                discordValidationState = { checked: true, valid: false, username: clean, error: res.message };
+                if (feedback) {
+                    feedback.className = 'mt-1.5 text-[11px] text-rose-500 dark:text-rose-400 font-semibold flex items-center space-x-1';
+                    feedback.innerHTML = `<i data-lucide="x-circle" class="w-3.5 h-3.5 flex-shrink-0"></i><span>✕ ${res.message || 'Akun Discord tidak ditemukan atau belum terdaftar.'}</span>`;
+                }
+                if (icon) icon.innerHTML = '<i data-lucide="x-circle" class="w-4 h-4 text-rose-500"></i>';
+            }
+            lucide.createIcons();
+        } catch (err) {
+            discordValidationState = { checked: true, valid: false, username: clean, error: err.message };
+            if (feedback) {
+                feedback.className = 'mt-1.5 text-[11px] text-rose-500 dark:text-rose-400 font-semibold flex items-center space-x-1';
+                feedback.innerHTML = `<i data-lucide="alert-circle" class="w-3.5 h-3.5 flex-shrink-0"></i><span>✕ ${err.message}</span>`;
+            }
+            if (icon) icon.innerHTML = '<i data-lucide="alert-circle" class="w-4 h-4 text-rose-500"></i>';
+            lucide.createIcons();
+        }
+    }, 400);
 }
 
 function togglePasswordModalVisibility() {
@@ -1535,44 +1590,6 @@ function togglePasswordModalVisibility() {
         if (icon) icon.setAttribute('data-lucide', 'eye');
     }
     lucide.createIcons();
-}
-
-async function verifyDiscordInModal() {
-    const discordInput = document.getElementById('custDiscord');
-    const feedback = document.getElementById('discordFeedback');
-    const btnText = document.getElementById('discordBtnText');
-    if (!discordInput || !feedback) return;
-
-    const val = discordInput.value.trim().replace(/^@/, '');
-    if (!val) {
-        feedback.className = 'mt-1.5 text-[11px] text-rose-500 font-semibold';
-        feedback.innerHTML = 'Silakan isi username Discord terlebih dahulu.';
-        return;
-    }
-
-    if (btnText) btnText.textContent = 'Mengecek...';
-    feedback.className = 'mt-1.5 text-[11px] text-slate-400';
-    feedback.innerHTML = 'Menghubungi Discord API...';
-
-    try {
-        const res = await window.bnrApi.adminVerifyDiscord(val);
-        if (btnText) btnText.textContent = 'Cek Akun';
-
-        if (res.valid) {
-            lastVerifiedDiscord = res.username;
-            feedback.className = 'mt-1.5 text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold flex items-center space-x-1';
-            feedback.innerHTML = `<span>✓ Akun Discord <strong>@${res.username}</strong> valid & terverifikasi.</span>`;
-        } else {
-            lastVerifiedDiscord = null;
-            feedback.className = 'mt-1.5 text-[11px] text-rose-500 dark:text-rose-400 font-semibold flex items-center space-x-1';
-            feedback.innerHTML = `<span>✕ ${res.message || 'Akun Discord tidak ditemukan / belum terdaftar.'}</span>`;
-        }
-    } catch (err) {
-        if (btnText) btnText.textContent = 'Cek Akun';
-        lastVerifiedDiscord = null;
-        feedback.className = 'mt-1.5 text-[11px] text-rose-500 dark:text-rose-400 font-semibold';
-        feedback.innerHTML = `<span>✕ ${err.message}</span>`;
-    }
 }
 
 async function handleCreateCustomerSubmit(event) {
@@ -1597,14 +1614,50 @@ async function handleCreateCustomerSubmit(event) {
 
     // Set loading state
     if (submitBtn) submitBtn.disabled = true;
-    if (btnSubmitText) btnSubmitText.textContent = 'Mendaftarkan...';
+    if (btnSubmitText) btnSubmitText.textContent = 'Mengecek Discord...';
     if (alertBox) alertBox.className = 'hidden';
+
+    // Automatic check of Discord username before submission
+    const cleanDiscord = discordUsername.trim().replace(/^@/, '');
+    if (!discordValidationState.checked || discordValidationState.username !== cleanDiscord) {
+        try {
+            const checkRes = await window.bnrApi.adminVerifyDiscord(cleanDiscord);
+            if (!checkRes.valid) {
+                if (submitBtn) submitBtn.disabled = false;
+                if (btnSubmitText) btnSubmitText.textContent = 'Daftarkan Nasabah';
+                if (alertBox) {
+                    alertBox.className = 'mb-4 p-3 rounded-2xl text-xs font-semibold bg-rose-50 text-rose-600 border border-rose-200 dark:bg-rose-950/40 dark:text-rose-400 dark:border-rose-900 block';
+                    alertBox.textContent = checkRes.message || `Akun Discord @${cleanDiscord} tidak ditemukan atau belum terdaftar di Discord.`;
+                }
+                return;
+            }
+            discordValidationState = { checked: true, valid: true, username: checkRes.username, error: '' };
+        } catch (e) {
+            if (submitBtn) submitBtn.disabled = false;
+            if (btnSubmitText) btnSubmitText.textContent = 'Daftarkan Nasabah';
+            if (alertBox) {
+                alertBox.className = 'mb-4 p-3 rounded-2xl text-xs font-semibold bg-rose-50 text-rose-600 border border-rose-200 dark:bg-rose-950/40 dark:text-rose-400 dark:border-rose-900 block';
+                alertBox.textContent = e.message || 'Gagal memverifikasi akun Discord.';
+            }
+            return;
+        }
+    } else if (!discordValidationState.valid) {
+        if (submitBtn) submitBtn.disabled = false;
+        if (btnSubmitText) btnSubmitText.textContent = 'Daftarkan Nasabah';
+        if (alertBox) {
+            alertBox.className = 'mb-4 p-3 rounded-2xl text-xs font-semibold bg-rose-50 text-rose-600 border border-rose-200 dark:bg-rose-950/40 dark:text-rose-400 dark:border-rose-900 block';
+            alertBox.textContent = discordValidationState.error || `Akun Discord @${cleanDiscord} tidak ditemukan atau belum terdaftar di Discord.`;
+        }
+        return;
+    }
+
+    if (btnSubmitText) btnSubmitText.textContent = 'Mendaftarkan...';
 
     try {
         const res = await window.bnrApi.adminCreateUser({
             name,
             username,
-            discordUsername,
+            discordUsername: cleanDiscord,
             password,
             initialBalance: parseInt(initialBalance, 10) || 0
         });
@@ -1618,8 +1671,8 @@ async function handleCreateCustomerSubmit(event) {
                 <div class="text-xs text-left space-y-1.5 p-3.5 bg-slate-50 dark:bg-slate-800 rounded-2xl mt-2 font-mono border border-slate-200 dark:border-slate-700">
                     <p><strong class="text-slate-400 font-sans">Nama:</strong> ${res.user.name}</p>
                     <p><strong class="text-slate-400 font-sans">Username:</strong> @${res.user.username}</p>
-                    <p><strong class="text-slate-400 font-sans">Discord:</strong> @${res.user.discordUsername}</p>
-                    <p><strong class="text-slate-400 font-sans">No Rekening:</strong> ${res.user.accountNumber}</p>
+                    <p><strong class="text-slate-400 font-sans">Username Discord:</strong> @${res.user.discordUsername}</p>
+                    <p><strong class="text-slate-400 font-sans">No. Rekening:</strong> ${res.user.accountNumber}</p>
                     <p><strong class="text-slate-400 font-sans">Saldo Awal:</strong> ${formatCurrency(res.user.balance)}</p>
                 </div>
             `,
