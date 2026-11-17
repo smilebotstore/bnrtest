@@ -1,7 +1,37 @@
 /**
- * BNR Theme Manager (Dark Mode & Light Mode)
+ * BNR Theme Manager & Application Settings
  * Persists theme state in localStorage and updates UI smoothly.
  */
+window.BNR_CONFIG = window.BNR_CONFIG || {
+    appName: "BNR",
+    bankName: "Bank Nusantara Roblox",
+    tagline: "Virtual Banking System",
+    branding: {
+        logoUrl: "/assets/images/bnr-logo.svg",
+        fallbackLogo: "/assets/images/bnr-logo.svg",
+        faviconUrl: "/assets/images/favicon.svg",
+        pwaIcon192: "/assets/images/bnr-logo.png",
+        pwaIcon512: "/assets/images/bnr-logo.png"
+    },
+    pageTitles: {
+        login: "Masuk ke Layanan — BNR",
+        dashboard: "Beranda Nasabah — BNR",
+        transfer: "Transfer Saldo — BNR",
+        mutasi: "Mutasi Rekening — BNR",
+        qris: "Pembayaran QRIS — BNR",
+        topup: "Pengajuan Top Up — BNR",
+        kartu: "Kartu Virtual Debit — BNR",
+        notifikasi: "Pusat Notifikasi — BNR",
+        profil: "Profil Pengguna — BNR",
+        admin: "Super Admin Portal — BNR"
+    },
+    theme: {
+        defaultMode: "dark",
+        brandColor: "#CC0000",
+        darkColor: "#0F172A"
+    }
+};
+
 (function() {
     const THEME_KEY = 'bnr_theme';
 
