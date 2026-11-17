@@ -8,6 +8,7 @@
     <!-- PWA & Theme -->
     <link rel="manifest" href="/manifest.json">
     <meta name="theme-color" content="#990000">
+    <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <link rel="icon" href="/assets/images/favicon.svg" type="image/svg+xml">
@@ -265,11 +266,14 @@
         // Service Worker Registration
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('/sw.js')
-                    .then(reg => console.log('SW Registered:', reg.scope))
-                    .catch(err => console.log('SW Registration Failed:', err));
+                navigator.serviceWorker.register('/sw.js').catch(() => {});
             });
         }
+        // Security Console Notice
+        try {
+            console.log('%cSTOP!', 'color: #CC0000; font-size: 38px; font-weight: 800;');
+            console.log('%cIni adalah area keamanan sistem perbankan virtual BNR. Menyalin kode atau menempelkan skrip sembarangan dapat membahayakan keamanan akun Anda.', 'font-size: 13px; color: #64748B;');
+        } catch {}
     </script>
 </body>
 </html>

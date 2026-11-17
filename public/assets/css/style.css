@@ -154,3 +154,11 @@
 .bnr-custom-checkbox:checked::before {
     transform: scale(1);
 }
+
+/* Brand Assets & Layout Anti-Tamper Protection */
+.bnr-brand-logo,
+.bnr-card-gradient {
+    -webkit-user-drag: none;
+    user-select: none;
+    -webkit-user-select: none;
+}

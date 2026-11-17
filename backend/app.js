@@ -14,6 +14,15 @@ const db = require('./database/firebaseService');
 
 const app = express();
 
+// Security Hardening: Disable Express signature header & apply HTTP security headers
+app.disable('x-powered-by');
+app.use((req, res, next) => {
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+    res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+    next();
+});
+
 // Middlewares
 app.use(cors());
 app.use(express.json());
@@ -50,9 +59,13 @@ app.post('/api/admin/topups/approve', verifyToken, requireAdmin, (req, res) => a
 app.get('/api/admin/audit-logs', verifyToken, requireAdmin, (req, res) => adminController.getAuditLogs(req, res));
 app.post('/api/admin/settings/maintenance', verifyToken, requireAdmin, (req, res) => adminController.toggleMaintenance(req, res));
 
-// Serve Frontend Static Files
+// Serve Frontend Static Files (Ignore dotfiles & hidden resources)
 const publicPath = path.join(__dirname, '..', 'public');
-app.use(express.static(publicPath));
+app.use(express.static(publicPath, {
+    dotfiles: 'ignore',
+    etag: true,
+    lastModified: true
+}));
 
 // Clean SPA routing for pages (without .html in the URL)
 const cleanRoutes = [
@@ -78,12 +91,19 @@ app.get(cleanRoutes, (req, res) => {
     res.sendFile(path.join(publicPath, 'index.html'));
 });
 
-// Fallback route
+// Fallback & Security Protection
 app.get('*', (req, res) => {
     // If request asks for an API that doesn't exist
     if (req.path.startsWith('/api/')) {
         return res.status(404).json({ success: false, message: 'Endpoint API tidak ditemukan.' });
     }
+
+    const p = req.path.toLowerCase();
+    // Block any request with a file extension or hidden path that wasn't served by express.static
+    if (path.extname(p) || p.includes('/.') || p.startsWith('/backend') || p.startsWith('/node_modules')) {
+        return res.status(404).send('Not Found');
+    }
+
     res.sendFile(path.join(publicPath, 'index.html'));
 });
 
