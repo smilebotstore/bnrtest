@@ -360,19 +360,24 @@ function navigateTo(viewId, pushState = true) {
 
     const titleEl = document.getElementById('pageTitle');
     const cfgTitles = (window.BNR_CONFIG && window.BNR_CONFIG.pageTitles) || {};
-    const titles = {
+    const fallbackTitles = {
         dashboard: 'Beranda',
         transfer: 'Transfer Saldo',
         mutation: 'Mutasi Rekening',
-        qr: 'Pembayaran QR',
+        qr: 'Pembayaran QRIS',
         topup: 'Pengajuan Top Up',
         virtualCard: 'Kartu Virtual',
-        notifications: 'Notifikasi',
-        profile: 'Profil Saya',
-        admin: 'Admin Panel'
+        notifications: 'Pusat Notifikasi',
+        profile: 'Profil Pengguna',
+        admin: 'Super Admin Portal'
     };
-    if (titleEl) titleEl.textContent = titles[viewId] || 'Beranda';
-    document.title = cfgTitles[viewId] || `${titles[viewId] || 'Beranda'} — BNR`;
+
+    const rawConfigTitle = cfgTitles[viewId] || fallbackTitles[viewId] || 'Beranda';
+    const cleanHeaderTitle = rawConfigTitle.replace(/\s*[—-]\s*BNR.*$/i, '').trim() || rawConfigTitle;
+    const tabTitle = rawConfigTitle.includes('BNR') ? rawConfigTitle : `${rawConfigTitle} — BNR`;
+
+    if (titleEl) titleEl.textContent = cleanHeaderTitle;
+    document.title = tabTitle;
 
     // Render corresponding view
     switch (viewId) {

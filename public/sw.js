@@ -1,15 +1,16 @@
 /**
- * BNR Service Worker v25
+ * BNR Service Worker v26
  * Caches core static assets for clean SPA architecture.
  */
 
-const CACHE_NAME = 'bnr-pwa-v25';
+const CACHE_NAME = 'bnr-pwa-v26';
 const ASSETS_TO_CACHE = [
     '/',
     '/index.html',
     '/manifest.json',
     '/assets/css/style.css',
     '/assets/images/favicon.ico',
+    '/assets/images/logo.png',
     '/js/theme.js',
     '/js/api.js',
     '/js/app.js'
@@ -53,7 +54,21 @@ self.addEventListener('fetch', (event) => {
         return;
     }
 
-    // Static assets
+    // Active scripts and stylesheets: Network-first, fall back to cache
+    if (event.request.url.includes('/js/') || event.request.url.includes('/assets/css/')) {
+        event.respondWith(
+            fetch(event.request).then((networkRes) => {
+                if (networkRes && networkRes.status === 200) {
+                    const resClone = networkRes.clone();
+                    caches.open(CACHE_NAME).then((cache) => cache.put(event.request, resClone));
+                }
+                return networkRes;
+            }).catch(() => caches.match(event.request))
+        );
+        return;
+    }
+
+    // Static assets & images: Cache first with network fallback
     event.respondWith(
         caches.match(event.request).then((cached) => {
             if (cached) return cached;

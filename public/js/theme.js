@@ -7,20 +7,20 @@ window.BNR_CONFIG = window.BNR_CONFIG || {
     bankName: "Bank Nusantara Roblox",
     tagline: "Virtual Banking System",
     branding: {
-        logoUrl: "https://i.ibb.co/WN4MtGnZ/Screenshot-20261108-072739-1.jpg",
-        fallbackLogo: "https://i.ibb.co/WN4MtGnZ/Screenshot-20261108-072739-1.jpg",
+        logoUrl: "/assets/images/logo.png",
+        fallbackLogo: "/assets/images/logo.png",
         faviconUrl: "/assets/images/favicon.ico",
-        pwaIcon192: "https://i.ibb.co/WN4MtGnZ/Screenshot-20261108-072739-1.jpg",
-        pwaIcon512: "https://i.ibb.co/WN4MtGnZ/Screenshot-20261108-072739-1.jpg"
+        pwaIcon192: "/assets/images/logo.png",
+        pwaIcon512: "/assets/images/logo.png"
     },
     pageTitles: {
         login: "Masuk ke Layanan — BNR",
-        dashboard: "Beranda Nasabah — BNR",
+        dashboard: "Beranda — BNR",
         transfer: "Transfer Saldo — BNR",
         mutation: "Mutasi Rekening — BNR",
         qr: "Pembayaran QRIS — BNR",
         topup: "Pengajuan Top Up — BNR",
-        virtualCard: "Kartu Virtual Debit — BNR",
+        virtualCard: "Kartu Virtual — BNR",
         notifications: "Pusat Notifikasi — BNR",
         profile: "Profil Pengguna — BNR",
         admin: "Super Admin Portal — BNR"
