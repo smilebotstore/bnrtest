@@ -2,6 +2,46 @@
  * BNR Frontend API Client
  * Secure wrapper for communicating with BNR Backend API.
  */
+
+// IPv4 Client Detection Cache & Helper
+let cachedClientIpv4 = null;
+
+async function fetchClientIpv4() {
+    if (cachedClientIpv4) return cachedClientIpv4;
+    try {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 2000);
+        const res = await fetch('https://api4.ipify.org?format=json', { signal: controller.signal });
+        clearTimeout(timeout);
+        if (res.ok) {
+            const data = await res.json();
+            if (data && data.ip && /^(\d{1,3}\.){3}\d{1,3}$/.test(data.ip)) {
+                cachedClientIpv4 = data.ip;
+                return cachedClientIpv4;
+            }
+        }
+    } catch {}
+
+    // Fallback IPv4 lookup
+    try {
+        const res2 = await fetch('https://api.ipify.org?format=json');
+        if (res2.ok) {
+            const data2 = await res2.json();
+            if (data2 && data2.ip && /^(\d{1,3}\.){3}\d{1,3}$/.test(data2.ip)) {
+                cachedClientIpv4 = data2.ip;
+                return cachedClientIpv4;
+            }
+        }
+    } catch {}
+
+    return cachedClientIpv4;
+}
+
+// Prefetch IPv4 in background
+if (typeof window !== 'undefined') {
+    setTimeout(() => fetchClientIpv4().catch(() => {}), 200);
+}
+
 class BnrApiClient {
     constructor() {
         this.tokenKey = 'bnr_auth_token';
@@ -49,6 +89,10 @@ class BnrApiClient {
             headers['Authorization'] = `Bearer ${token}`;
         }
 
+        if (cachedClientIpv4) {
+            headers['X-Client-IPv4'] = cachedClientIpv4;
+        }
+
         const config = {
             ...options,
             headers
@@ -85,9 +129,11 @@ class BnrApiClient {
             timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Jakarta';
         } catch {}
 
+        const clientIpv4 = await fetchClientIpv4().catch(() => null);
+
         const data = await this.request('/api/auth/login', {
             method: 'POST',
-            body: JSON.stringify({ username, password, timezone })
+            body: JSON.stringify({ username, password, timezone, clientIpv4 })
         });
         if (data.token) {
             this.setToken(data.token);
@@ -99,9 +145,10 @@ class BnrApiClient {
     async logout() {
         try {
             const user = this.getSavedUser();
+            const clientIpv4 = await fetchClientIpv4().catch(() => null);
             await this.request('/api/auth/logout', {
                 method: 'POST',
-                body: JSON.stringify({ username: user?.username })
+                body: JSON.stringify({ username: user?.username, clientIpv4 })
             });
         } catch (e) {
             console.warn('Logout notification omitted:', e);

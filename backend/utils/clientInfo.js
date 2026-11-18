@@ -3,23 +3,83 @@
  * Extracts IP, OS, Browser, and Timestamp for Security Audit Logging
  */
 
+function isIpv4(ip) {
+    return typeof ip === 'string' && /^(\d{1,3}\.){3}\d{1,3}$/.test(ip.trim());
+}
+
 function parseClientInfo(req, bodyTimezone) {
-    // 1. IP Address extraction
-    let rawIp = req.headers['x-forwarded-for'] || 
-               req.headers['x-real-ip'] || 
-               req.socket?.remoteAddress || 
-               req.ip || 
-               '127.0.0.1';
-               
-    if (typeof rawIp === 'string' && rawIp.includes(',')) {
-        rawIp = rawIp.split(',')[0].trim();
+    // 1. Check client-reported IPv4 from request body or custom header
+    let detectedIpv4 = null;
+    const bodyIpv4 = req.body?.clientIpv4 || req.query?.clientIpv4;
+    const headerIpv4 = req.headers['x-client-ipv4'];
+
+    if (isIpv4(bodyIpv4)) {
+        detectedIpv4 = bodyIpv4.trim();
+    } else if (isIpv4(headerIpv4)) {
+        detectedIpv4 = headerIpv4.trim();
     }
-    
-    let ip = rawIp;
-    if (ip === '::1' || ip === '::ffff:127.0.0.1' || ip === '127.0.0.1') {
+
+    // 2. Collect candidate IP strings from incoming server / proxy headers
+    const candidateIps = [];
+    ['x-forwarded-for', 'x-nf-client-connection-ip', 'client-ip', 'x-real-ip', 'cf-connecting-ip'].forEach(h => {
+        const val = req.headers[h];
+        if (typeof val === 'string') {
+            val.split(',').forEach(part => {
+                const clean = part.trim();
+                if (clean) candidateIps.push(clean);
+            });
+        }
+    });
+
+    if (req.socket?.remoteAddress) candidateIps.push(req.socket.remoteAddress);
+    if (req.ip) candidateIps.push(req.ip);
+
+    // Look for any valid IPv4 in candidate headers
+    if (!detectedIpv4) {
+        for (let raw of candidateIps) {
+            let clean = raw;
+            if (clean.startsWith('::ffff:')) {
+                clean = clean.replace('::ffff:', '');
+            }
+            if (isIpv4(clean)) {
+                detectedIpv4 = clean;
+                // If public IPv4, break immediately
+                if (!clean.startsWith('10.') && !clean.startsWith('192.168.') && !clean.startsWith('172.16.') && clean !== '127.0.0.1') {
+                    break;
+                }
+            }
+        }
+    }
+
+    // 3. Fallback: Parse 6to4 embedded IPv4 (2002:WWXX:YYZZ::)
+    if (!detectedIpv4) {
+        for (let raw of candidateIps) {
+            const match6to4 = raw.match(/^2002:([0-9a-fA-F]{1,4}):([0-9a-fA-F]{1,4}):/);
+            if (match6to4) {
+                const part1 = parseInt(match6to4[1], 16);
+                const part2 = parseInt(match6to4[2], 16);
+                const o1 = (part1 >> 8) & 255;
+                const o2 = part1 & 255;
+                const o3 = (part2 >> 8) & 255;
+                const o4 = part2 & 255;
+                detectedIpv4 = `${o1}.${o2}.${o3}.${o4}`;
+                break;
+            }
+        }
+    }
+
+    let ip = detectedIpv4;
+
+    // Final fallback if truly no IPv4 was found
+    if (!ip) {
+        const primary = candidateIps[0] || '127.0.0.1';
+        if (primary === '::1' || primary === '::ffff:127.0.0.1' || primary === '127.0.0.1') {
+            ip = '127.0.0.1 (Localhost)';
+        } else {
+            ip = primary.replace('::ffff:', '');
+        }
+    } else if (ip === '127.0.0.1' || ip === '::1') {
         ip = '127.0.0.1 (Localhost)';
-    } else if (ip.startsWith('::ffff:')) {
-        ip = ip.replace('::ffff:', '');
     }
 
     // 2. User Agent parsing
