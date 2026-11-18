@@ -12,14 +12,14 @@ window.BNR_CONFIG = {
         faviconUrl: "/assets/images/favicon.ico",
 
         // Logo utama di navbar, splash screen & login
-        logoUrl: "https://i.ibb.co/WN4MtGnZ/Screenshot-20261108-072739-1.jpg",
+        logoUrl: "/assets/images/logo.png",
         
         // Cadangan lokal jika link logo eksternal gagal dimuat
-        fallbackLogo: "https://i.ibb.co/WN4MtGnZ/Screenshot-20261108-072739-1.jpg",
+        fallbackLogo: "/assets/images/logo.png",
 
         // Ikon aplikasi PWA / Home Screen
-        pwaIcon192: "https://i.ibb.co/WN4MtGnZ/Screenshot-20261108-072739-1.jpg",
-        pwaIcon512: "https://i.ibb.co/WN4MtGnZ/Screenshot-20261108-072739-1.jpg"
+        pwaIcon192: "/assets/images/logo.png",
+        pwaIcon512: "/assets/images/logo.png"
     },
 
     // 2. Judul (Title) di Setiap Halaman Tab Browser
