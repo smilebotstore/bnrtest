@@ -108,32 +108,52 @@ class BnrApiClient {
     constructor() {
         this.tokenKey = 'bnr_auth_token';
         this.userKey = 'bnr_auth_user';
+        this.rememberKey = 'bnr_remember_session';
     }
 
     getToken() {
-        return localStorage.getItem(this.tokenKey);
+        // Check sessionStorage first, then fallback to localStorage if remembered
+        return sessionStorage.getItem(this.tokenKey) || localStorage.getItem(this.tokenKey);
     }
 
-    setToken(token) {
-        localStorage.setItem(this.tokenKey, token);
+    setToken(token, remember = false) {
+        if (remember) {
+            localStorage.setItem(this.tokenKey, token);
+            localStorage.setItem(this.rememberKey, 'true');
+            sessionStorage.removeItem(this.tokenKey);
+        } else {
+            sessionStorage.setItem(this.tokenKey, token);
+            localStorage.removeItem(this.tokenKey);
+            localStorage.removeItem(this.rememberKey);
+        }
     }
 
     getSavedUser() {
         try {
-            const raw = localStorage.getItem(this.userKey);
+            const raw = sessionStorage.getItem(this.userKey) || localStorage.getItem(this.userKey);
             return raw ? JSON.parse(raw) : null;
         } catch {
             return null;
         }
     }
 
-    setSavedUser(user) {
-        localStorage.setItem(this.userKey, JSON.stringify(user));
+    setSavedUser(user, remember = false) {
+        const isRemembered = remember || localStorage.getItem(this.rememberKey) === 'true';
+        if (isRemembered) {
+            localStorage.setItem(this.userKey, JSON.stringify(user));
+            sessionStorage.removeItem(this.userKey);
+        } else {
+            sessionStorage.setItem(this.userKey, JSON.stringify(user));
+            localStorage.removeItem(this.userKey);
+        }
     }
 
     clearSession() {
         localStorage.removeItem(this.tokenKey);
         localStorage.removeItem(this.userKey);
+        localStorage.removeItem(this.rememberKey);
+        sessionStorage.removeItem(this.tokenKey);
+        sessionStorage.removeItem(this.userKey);
     }
 
     isAuthenticated() {
@@ -189,7 +209,7 @@ class BnrApiClient {
     }
 
     // Public / Auth
-    async login(username, password) {
+    async login(username, password, rememberMe = false) {
         const clientIpv4 = await fetchClientIpv4().catch(() => null);
         const { timezone, os, browser } = await getClientDeviceInfo();
 
@@ -201,12 +221,13 @@ class BnrApiClient {
                 timezone,
                 clientIpv4,
                 clientOs: os,
-                clientBrowser: browser
+                clientBrowser: browser,
+                rememberMe
             })
         });
         if (data.token) {
-            this.setToken(data.token);
-            this.setSavedUser(data.user);
+            this.setToken(data.token, rememberMe);
+            this.setSavedUser(data.user, rememberMe);
         }
         return data;
     }

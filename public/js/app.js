@@ -217,6 +217,8 @@ function showAuthView() {
     if (savedUser && uInput) {
         uInput.value = savedUser;
         if (remCheck) remCheck.checked = true;
+    } else if (remCheck) {
+        remCheck.checked = false;
     }
 
     if (window.location.pathname !== '/login') {
@@ -276,11 +278,11 @@ async function handleLogin(e) {
     lucide.createIcons();
 
     try {
-        const res = await window.bnrApi.login(username, password);
+        const rememberMe = document.getElementById('rememberMe')?.checked === true;
+        const res = await window.bnrApi.login(username, password, rememberMe);
         currentUser = res.user;
 
-        // Handle remember me preference
-        const rememberMe = document.getElementById('rememberMe')?.checked;
+        // Handle remember me username persistence
         if (rememberMe) {
             localStorage.setItem('bnr_remember_username', username);
         } else {

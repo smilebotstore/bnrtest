@@ -164,19 +164,14 @@ function parseClientInfo(req, bodyTimezone, bodyOs, bodyBrowser) {
         }
     }
 
-    // 6. Timezone & Local Date Formatting based on user's device
+    // 6. Timezone based on user's device
     const rawTz = bodyTimezone || req.body?.timezone || req.headers['x-client-timezone'];
     const tzInfo = formatTimezone(rawTz);
     const timezone = tzInfo.display;
 
-    // 7. Formatted Date & Time based on device timezone
+    // 7. Formatted Date & Time is ALWAYS in WIB (Official BNR Server Time)
     const now = new Date();
-    let formattedDate = '';
-    try {
-        formattedDate = `${now.toLocaleString('id-ID', { timeZone: tzInfo.key })} ${tzInfo.abbr}`;
-    } catch {
-        formattedDate = `${now.toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' })} WIB`;
-    }
+    const formattedDateWIB = `${now.toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' })} WIB`;
 
     return {
         ip,
@@ -185,7 +180,7 @@ function parseClientInfo(req, bodyTimezone, bodyOs, bodyBrowser) {
         userAgent,
         timezone,
         timestamp: Date.now(),
-        loginTime: formattedDate
+        loginTime: formattedDateWIB
     };
 }
 

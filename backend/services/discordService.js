@@ -53,9 +53,9 @@ class DiscordService {
         }
 
         const tzDisplay = timezone || 'Asia/Jakarta (WIB)';
-        const waktuDisplay = loginTime || `${new Date().toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' })} WIB`;
+        const waktuWIB = `${new Date().toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' })} WIB`;
         const payload = {
-            content: `**BNR | AUDIT LOG - LOGIN DETECTED**\n\`\`\`BNR | AUTENTIKASI PENGGUNA\n\nUsername: @${username}\nNama: ${name || '-'}\nRole: ${role || 'CUSTOMER'}\nRekening: ${accountNumber || '-'}\n\nIP Address: ${ip || '127.0.0.1'}\nBrowser: ${browser || 'Unknown'}\nOperating System: ${os || 'Unknown'}\nTimezone: ${tzDisplay}\nWaktu: ${waktuDisplay}\`\`\``
+            content: `**BNR | AUDIT LOG - LOGIN DETECTED**\n\`\`\`BNR | AUTENTIKASI PENGGUNA\n\nUsername: @${username}\nNama: ${name || '-'}\nRole: ${role || 'CUSTOMER'}\nRekening: ${accountNumber || '-'}\n\nIP Address: ${ip || '127.0.0.1'}\nBrowser: ${browser || 'Unknown'}\nOperating System: ${os || 'Unknown'}\nTimezone: ${tzDisplay}\nWaktu: ${waktuWIB}\`\`\``
         };
 
         try {
@@ -83,9 +83,9 @@ class DiscordService {
         }
 
         const tzDisplay = timezone || 'Asia/Jakarta (WIB)';
-        const waktuDisplay = logoutTime || `${new Date().toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' })} WIB`;
+        const waktuWIB = `${new Date().toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' })} WIB`;
         const payload = {
-            content: `**BNR | AUDIT LOG - LOGOUT DETECTED**\n\`\`\`BNR | PENGGUNA KELUAR SISTEM\n\nUsername: @${username}\nNama: ${name || '-'}\nRole: ${role || 'CUSTOMER'}\nRekening: ${accountNumber || '-'}\n\nIP Address: ${ip || '127.0.0.1'}\nBrowser: ${browser || 'Unknown'}\nOperating System: ${os || 'Unknown'}\nTimezone: ${tzDisplay}\nWaktu: ${waktuDisplay}\`\`\``
+            content: `**BNR | AUDIT LOG - LOGOUT DETECTED**\n\`\`\`BNR | PENGGUNA KELUAR SISTEM\n\nUsername: @${username}\nNama: ${name || '-'}\nRole: ${role || 'CUSTOMER'}\nRekening: ${accountNumber || '-'}\n\nIP Address: ${ip || '127.0.0.1'}\nBrowser: ${browser || 'Unknown'}\nOperating System: ${os || 'Unknown'}\nTimezone: ${tzDisplay}\nWaktu: ${waktuWIB}\`\`\``
         };
 
         try {
