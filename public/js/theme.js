@@ -7,26 +7,26 @@ window.BNR_CONFIG = window.BNR_CONFIG || {
     bankName: "Bank Nusantara Roblox",
     tagline: "Virtual Banking System",
     branding: {
-        logoUrl: "/assets/images/bnr-logo.svg",
-        fallbackLogo: "/assets/images/bnr-logo.svg",
-        faviconUrl: "/assets/images/favicon.svg",
-        pwaIcon192: "/assets/images/bnr-logo.png",
-        pwaIcon512: "/assets/images/bnr-logo.png"
+        logoUrl: "https://i.ibb.co/WN4MtGnZ/Screenshot-20261108-072739-1.jpg",
+        fallbackLogo: "https://i.ibb.co/WN4MtGnZ/Screenshot-20261108-072739-1.jpg",
+        faviconUrl: "/assets/images/favicon.ico",
+        pwaIcon192: "https://i.ibb.co/WN4MtGnZ/Screenshot-20261108-072739-1.jpg",
+        pwaIcon512: "https://i.ibb.co/WN4MtGnZ/Screenshot-20261108-072739-1.jpg"
     },
     pageTitles: {
         login: "Masuk ke Layanan — BNR",
         dashboard: "Beranda Nasabah — BNR",
         transfer: "Transfer Saldo — BNR",
-        mutasi: "Mutasi Rekening — BNR",
-        qris: "Pembayaran QRIS — BNR",
+        mutation: "Mutasi Rekening — BNR",
+        qr: "Pembayaran QRIS — BNR",
         topup: "Pengajuan Top Up — BNR",
-        kartu: "Kartu Virtual Debit — BNR",
-        notifikasi: "Pusat Notifikasi — BNR",
-        profil: "Profil Pengguna — BNR",
+        virtualCard: "Kartu Virtual Debit — BNR",
+        notifications: "Pusat Notifikasi — BNR",
+        profile: "Profil Pengguna — BNR",
         admin: "Super Admin Portal — BNR"
     },
     theme: {
-        defaultMode: "dark",
+        defaultMode: "light",
         brandColor: "#CC0000",
         darkColor: "#0F172A"
     }
@@ -34,28 +34,35 @@ window.BNR_CONFIG = window.BNR_CONFIG || {
 
 (function() {
     const THEME_KEY = 'bnr_theme';
+    const MANUAL_FLAG = 'bnr_theme_manual';
 
-    // Apply saved theme or default to dark
+    // Apply saved theme if manually toggled, otherwise follow BNR_CONFIG default ('light')
     function getPreferredTheme() {
-        const saved = localStorage.getItem(THEME_KEY);
-        if (saved) return saved;
-        return (window.BNR_CONFIG && window.BNR_CONFIG.theme && window.BNR_CONFIG.theme.defaultMode) || 'dark';
+        const isManual = localStorage.getItem(MANUAL_FLAG) === 'true';
+        if (isManual) {
+            const saved = localStorage.getItem(THEME_KEY);
+            if (saved === 'dark' || saved === 'light') return saved;
+        }
+        return (window.BNR_CONFIG && window.BNR_CONFIG.theme && window.BNR_CONFIG.theme.defaultMode) || 'light';
     }
 
-    function applyTheme(theme) {
+    function applyTheme(theme, isManual = false) {
         if (theme === 'dark') {
             document.documentElement.classList.add('dark');
         } else {
             document.documentElement.classList.remove('dark');
         }
-        localStorage.setItem(THEME_KEY, theme);
+        if (isManual) {
+            localStorage.setItem(THEME_KEY, theme);
+            localStorage.setItem(MANUAL_FLAG, 'true');
+        }
         updateThemeButtons(theme);
     }
 
     function toggleTheme() {
         const current = document.documentElement.classList.contains('dark') ? 'dark' : 'light';
         const next = current === 'dark' ? 'light' : 'dark';
-        applyTheme(next);
+        applyTheme(next, true);
     }
 
     function updateThemeButtons(theme) {
