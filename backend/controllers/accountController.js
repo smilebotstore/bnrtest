@@ -294,11 +294,11 @@ class AccountController {
 
             // Delete avatarUrl in database
             await db.update(`users/${username}`, { avatarUrl: null });
-            await db.logAudit(username, 'REMOVE_AVATAR', 'Menghapus foto profil akun dari server (kembali ke inisial nama)');
+            await db.logAudit(username, 'REMOVE_AVATAR', 'Menghapus foto profil akun');
 
             return res.json({
                 success: true,
-                message: 'Foto profil berhasil dihapus dari data server. Kembali menggunakan inisial nama.',
+                message: 'Foto profil berhasil dihapus.',
                 avatarUrl: null
             });
         } catch (err) {

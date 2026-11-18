@@ -1130,7 +1130,7 @@ async function handleRemoveAvatar() {
         Swal.fire({
             icon: 'info',
             title: 'Foto Profil Belum Ada',
-            text: 'Akun Anda saat ini belum memiliki foto profil kustom dan sudah menampilkan inisial nama.',
+            text: 'Akun Anda saat ini belum memiliki foto profil kustom.',
             confirmButtonColor: '#CC0000'
         });
         return;
@@ -1138,7 +1138,7 @@ async function handleRemoveAvatar() {
 
     const confirm = await Swal.fire({
         title: 'Hapus Foto Profil?',
-        text: 'Foto profil akun Anda akan dihapus dari data server dan digantikan oleh inisial nama akun.',
+        text: 'Apakah Anda yakin ingin menghapus foto profil akun Anda?',
         icon: 'warning',
         showCancelButton: true,
         confirmButtonColor: '#CC0000',
@@ -1151,7 +1151,7 @@ async function handleRemoveAvatar() {
     if (confirm.isConfirmed) {
         Swal.fire({
             title: 'Menghapus Foto...',
-            text: 'Menghapus foto profil dari data server...',
+            text: 'Sedang memproses penghapusan foto profil...',
             allowOutsideClick: false,
             didOpen: () => Swal.showLoading()
         });
@@ -1163,8 +1163,8 @@ async function handleRemoveAvatar() {
 
             Swal.fire({
                 icon: 'success',
-                title: 'Foto Dihapus',
-                text: res.message || 'Foto profil berhasil dihapus. Profil kembali menggunakan inisial nama.',
+                title: 'Berhasil Dihapus',
+                text: res.message || 'Foto profil berhasil dihapus dari akun Anda.',
                 confirmButtonColor: '#CC0000',
                 timer: 2000
             });
