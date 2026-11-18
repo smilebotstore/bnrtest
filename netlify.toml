@@ -1,0 +1,16 @@
+[build]
+  publish = "public"
+  functions = "netlify/functions"
+
+# API Serverless Function Redirect
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/api/api/:splat"
+  status = 200
+  force = true
+
+# Single Page App & Clean URL Routing (Keeps /dashboard, /transfer clean without .html)
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
