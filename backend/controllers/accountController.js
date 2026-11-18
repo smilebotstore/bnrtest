@@ -228,6 +228,20 @@ class AccountController {
             const fileName = `avatar_${username}_${Date.now()}.${ext}`;
             const uploadsDir = path.join(__dirname, '..', '..', 'public', 'uploads', 'avatars');
 
+            // If user already had a previous uploaded avatar file, clean it up
+            try {
+                const prevUser = await db.get(`users/${username}`);
+                if (prevUser && prevUser.avatarUrl && prevUser.avatarUrl.startsWith('/uploads/avatars/')) {
+                    const oldFileName = path.basename(prevUser.avatarUrl.split('?')[0]);
+                    const oldFilePath = path.join(uploadsDir, oldFileName);
+                    if (fs.existsSync(oldFilePath)) {
+                        fs.unlinkSync(oldFilePath);
+                    }
+                }
+            } catch (cleanErr) {
+                console.warn('[Avatar Clean Previous Warning]', cleanErr.message);
+            }
+
             let finalAvatarUrl = avatar; // fallback: data URI for serverless/read-only environments
 
             try {
@@ -263,12 +277,28 @@ class AccountController {
     async removeAvatar(req, res) {
         try {
             const username = req.user.username;
+            const user = await db.get(`users/${username}`);
+
+            // Delete physical file from server storage if exists
+            if (user && user.avatarUrl && user.avatarUrl.startsWith('/uploads/avatars/')) {
+                const existingFileName = path.basename(user.avatarUrl.split('?')[0]);
+                const existingFilePath = path.join(__dirname, '..', '..', 'public', 'uploads', 'avatars', existingFileName);
+                if (fs.existsSync(existingFilePath)) {
+                    try {
+                        fs.unlinkSync(existingFilePath);
+                    } catch (e) {
+                        console.warn('[Avatar Delete File Warning]', e.message);
+                    }
+                }
+            }
+
+            // Delete avatarUrl in database
             await db.update(`users/${username}`, { avatarUrl: null });
-            await db.logAudit(username, 'REMOVE_AVATAR', 'Menghapus foto profil (kembali ke inisial nama)');
+            await db.logAudit(username, 'REMOVE_AVATAR', 'Menghapus foto profil akun dari server (kembali ke inisial nama)');
 
             return res.json({
                 success: true,
-                message: 'Foto profil berhasil dihapus. Kembali menggunakan inisial nama.',
+                message: 'Foto profil berhasil dihapus dari data server. Kembali menggunakan inisial nama.',
                 avatarUrl: null
             });
         } catch (err) {

@@ -1041,12 +1041,10 @@ function renderProfileView() {
                 <div>
                     <h3 class="text-xl font-extrabold text-slate-800 dark:text-white">${currentUser.name}</h3>
                     <p class="text-xs text-slate-500 dark:text-slate-400 font-mono">@${currentUser.username} • ${currentUser.role}</p>
-                    ${currentUser.avatarUrl ? `
-                        <button onclick="handleRemoveAvatar()" class="mt-2 text-[11px] text-rose-500 hover:text-rose-600 dark:text-rose-400 font-semibold flex items-center space-x-1 transition">
-                            <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
-                            <span>Hapus foto profil</span>
-                        </button>
-                    ` : ''}
+                    <button type="button" onclick="handleRemoveAvatar()" class="mt-2.5 px-3 py-1.5 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 dark:hover:bg-rose-900/50 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-800/80 rounded-xl text-xs font-semibold flex items-center space-x-1.5 transition">
+                        <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                        <span>Hapus Foto Profil</span>
+                    </button>
                 </div>
             </div>
 
@@ -1126,35 +1124,53 @@ async function handleAvatarFileSelected(event) {
 }
 
 async function handleRemoveAvatar() {
+    if (!currentUser.avatarUrl) {
+        Swal.fire({
+            icon: 'info',
+            title: 'Foto Profil Belum Ada',
+            text: 'Akun Anda saat ini belum memiliki foto profil kustom dan sudah menampilkan inisial nama.',
+            confirmButtonColor: '#CC0000'
+        });
+        return;
+    }
+
     const confirm = await Swal.fire({
         title: 'Hapus Foto Profil?',
-        text: 'Tampilan profil akan kembali menggunakan inisial nama Anda.',
-        icon: 'question',
+        text: 'Foto profil akun Anda akan dihapus dari data server dan digantikan oleh inisial nama akun.',
+        icon: 'warning',
         showCancelButton: true,
         confirmButtonColor: '#CC0000',
         cancelButtonColor: '#64748B',
         confirmButtonText: 'Ya, Hapus',
-        cancelButtonText: 'Batal'
+        cancelButtonText: 'Batal',
+        reverseButtons: true
     });
 
     if (confirm.isConfirmed) {
+        Swal.fire({
+            title: 'Menghapus Foto...',
+            text: 'Menghapus foto profil dari data server...',
+            allowOutsideClick: false,
+            didOpen: () => Swal.showLoading()
+        });
+
         try {
-            await window.bnrApi.removeAvatar();
+            const res = await window.bnrApi.removeAvatar();
             currentUser.avatarUrl = null;
             window.bnrApi.setSavedUser(currentUser);
 
             Swal.fire({
                 icon: 'success',
                 title: 'Foto Dihapus',
-                text: 'Profil kembali menggunakan inisial nama.',
-                timer: 1500,
-                showConfirmButton: false
+                text: res.message || 'Foto profil berhasil dihapus. Profil kembali menggunakan inisial nama.',
+                confirmButtonColor: '#CC0000',
+                timer: 2000
             });
 
             renderProfileView();
             renderSidebarAndNav();
         } catch (err) {
-            Swal.fire('Gagal', err.message, 'error');
+            Swal.fire('Gagal Menghapus', err.message, 'error');
         }
     }
 }
