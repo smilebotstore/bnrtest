@@ -1,3 +1,49 @@
+/* ==========================================================================
+   KONFIGURASI RESMI FRONTEND BNR (UBAH FAVICON, LOGO, NAMA & JUDUL DI SINI)
+   ========================================================================== */
+window.BNR_CONFIG = {
+    appName: "BNR",
+    bankName: "Bank Nusantara Roblox",
+    tagline: "Virtual Banking System",
+    
+    // 1. Konfigurasi Branding, Logo & Favicon
+    branding: {
+        // Favicon / Icon Tab Browser (Bisa path lokal atau link URL eksternal)
+        faviconUrl: "/assets/images/favicon.svg",
+
+        // Logo utama di navbar, splash screen & login
+        logoUrl: "/assets/images/bnr-logo.svg",
+        
+        // Cadangan lokal jika link logo eksternal gagal dimuat
+        fallbackLogo: "/assets/images/bnr-logo.svg",
+
+        // Ikon aplikasi PWA / Home Screen
+        pwaIcon192: "/assets/images/bnr-logo.png",
+        pwaIcon512: "/assets/images/bnr-logo.png"
+    },
+
+    // 2. Judul (Title) di Setiap Halaman Tab Browser
+    pageTitles: {
+        login: "Masuk ke Layanan — BNR",
+        dashboard: "Beranda Nasabah — BNR",
+        transfer: "Transfer Saldo — BNR",
+        mutation: "Mutasi Rekening — BNR",
+        qr: "Pembayaran QRIS — BNR",
+        topup: "Pengajuan Top Up — BNR",
+        virtualCard: "Kartu Virtual Debit — BNR",
+        notifications: "Pusat Notifikasi — BNR",
+        profile: "Profil Pengguna — BNR",
+        admin: "Super Admin Portal — BNR"
+    },
+
+    // 3. Pengaturan Tampilan & Tema Default
+    theme: {
+        defaultMode: "dark", // "dark" atau "light"
+        brandColor: "#CC0000",
+        darkColor: "#0F172A"
+    }
+};
+
 /**
  * BNR — Bank Nusantara Roblox
  * Core Application Engine & Clean Router
