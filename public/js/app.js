@@ -12,14 +12,14 @@ window.BNR_CONFIG = {
         faviconUrl: "/assets/images/favicon.svg",
 
         // Logo utama di navbar, splash screen & login
-        logoUrl: "/assets/images/bnr-logo.svg",
+        logoUrl: "https://i.ibb.co/WN4MtGnZ/Screenshot-20261108-072739-1.jpg",
         
         // Cadangan lokal jika link logo eksternal gagal dimuat
-        fallbackLogo: "/assets/images/bnr-logo.svg",
+        fallbackLogo: "https://i.ibb.co/WN4MtGnZ/Screenshot-20261108-072739-1.jpg",
 
         // Ikon aplikasi PWA / Home Screen
-        pwaIcon192: "/assets/images/bnr-logo.png",
-        pwaIcon512: "/assets/images/bnr-logo.png"
+        pwaIcon192: "https://i.ibb.co/WN4MtGnZ/Screenshot-20261108-072739-1.jpg",
+        pwaIcon512: "https://i.ibb.co/WN4MtGnZ/Screenshot-20261108-072739-1.jpg"
     },
 
     // 2. Judul (Title) di Setiap Halaman Tab Browser
@@ -38,7 +38,7 @@ window.BNR_CONFIG = {
 
     // 3. Pengaturan Tampilan & Tema Default
     theme: {
-        defaultMode: "dark", // "dark" atau "light"
+        defaultMode: "light", // "dark" atau "light"
         brandColor: "#CC0000",
         darkColor: "#0F172A"
     }
