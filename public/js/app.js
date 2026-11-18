@@ -1038,13 +1038,15 @@ function renderProfileView() {
                     <input type="file" id="profileAvatarInput" accept="image/png, image/jpeg, image/jpg, image/webp" class="hidden" onchange="handleAvatarFileSelected(event)">
                 </div>
 
-                <div>
-                    <h3 class="text-xl font-extrabold text-slate-800 dark:text-white">${currentUser.name}</h3>
-                    <p class="text-xs text-slate-500 dark:text-slate-400 font-mono">@${currentUser.username} • ${currentUser.role}</p>
-                    <button type="button" onclick="handleRemoveAvatar()" class="mt-2.5 px-3 py-1.5 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 dark:hover:bg-rose-900/50 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-800/80 rounded-xl text-xs font-semibold flex items-center space-x-1.5 transition">
-                        <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
-                        <span>Hapus Foto Profil</span>
-                    </button>
+                <div class="min-w-0">
+                    <h3 class="text-xl font-extrabold text-slate-800 dark:text-white truncate">${currentUser.name}</h3>
+                    <p class="text-xs text-slate-500 dark:text-slate-400 font-mono truncate">@${currentUser.username} • ${currentUser.role}</p>
+                    ${currentUser.avatarUrl ? `
+                        <button type="button" onclick="handleRemoveAvatar()" class="mt-2.5 px-3 py-1.5 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 dark:hover:bg-rose-900/50 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-800/80 rounded-xl text-xs font-semibold inline-flex items-center space-x-1.5 transition">
+                            <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                            <span>Hapus Foto Profil</span>
+                        </button>
+                    ` : ''}
                 </div>
             </div>
 
