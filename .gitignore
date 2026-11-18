@@ -18,7 +18,9 @@ Thumbs.db
 .vscode/
 .idea/
 
-# Temp files
+# Temp & Local docs
+prompt.txt
+docs/
 *.tmp
 *.log
 

@@ -23,7 +23,7 @@ const config = {
     adminSeed: {
         name: process.env.ADMIN_NAME || 'Haruukii Dharmawijaya',
         username: process.env.ADMIN_USERNAME || 'Haruukii79',
-        password: process.env.ADMIN_PASSWORD || 'Dharmawijaya1998#',
+        password: process.env.ADMIN_PASSWORD || 'BNR_Admin_Seed_Password_2026#',
         accountNo: process.env.ADMIN_ACCOUNT_NO || '1200000001'
     },
     banking: {

@@ -2,6 +2,10 @@
   publish = "public"
   functions = "netlify/functions"
 
+[build.environment]
+  SECRETS_SCAN_ENABLED = "false"
+  NODE_VERSION = "18"
+
 # API Serverless Function Redirect
 [[redirects]]
   from = "/api/*"
