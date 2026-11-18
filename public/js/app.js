@@ -9,7 +9,7 @@ window.BNR_CONFIG = {
     // 1. Konfigurasi Branding, Logo & Favicon
     branding: {
         // Favicon / Icon Tab Browser (Bisa path lokal atau link URL eksternal)
-        faviconUrl: "/assets/images/favicon.svg",
+        faviconUrl: "/assets/images/favicon.ico",
 
         // Logo utama di navbar, splash screen & login
         logoUrl: "https://i.ibb.co/WN4MtGnZ/Screenshot-20261108-072739-1.jpg",
