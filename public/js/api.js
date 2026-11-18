@@ -42,6 +42,68 @@ if (typeof window !== 'undefined') {
     setTimeout(() => fetchClientIpv4().catch(() => {}), 200);
 }
 
+// Device Environment & OS Detection Helper
+async function getClientDeviceInfo() {
+    // 1. Device Timezone
+    let timezone = 'Asia/Jakarta';
+    try {
+        timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Jakarta';
+    } catch {}
+
+    // 2. Device OS Detection (with high-entropy Client Hints where supported)
+    let os = 'Unknown OS';
+    try {
+        if (navigator.userAgentData && navigator.userAgentData.getHighEntropyValues) {
+            const hints = await navigator.userAgentData.getHighEntropyValues(['platform', 'platformVersion', 'model']);
+            const p = hints.platform || navigator.userAgentData.platform;
+            if (p === 'Windows') {
+                const major = parseInt(hints.platformVersion?.split('.')[0] || '0', 10);
+                os = major >= 13 ? 'Windows 11' : 'Windows 10';
+            } else if (p === 'Android') {
+                os = hints.model ? `Android (${hints.model})` : 'Android';
+            } else if (p === 'macOS') {
+                os = 'macOS';
+            } else if (p === 'Linux') {
+                os = 'Linux';
+            }
+        }
+    } catch {}
+
+    if (os === 'Unknown OS') {
+        const ua = navigator.userAgent;
+        if (/Windows NT 10.0/i.test(ua)) os = 'Windows 10 / 11';
+        else if (/Windows NT 6.3/i.test(ua)) os = 'Windows 8.1';
+        else if (/Windows NT 6.2/i.test(ua)) os = 'Windows 8';
+        else if (/Windows NT 6.1/i.test(ua)) os = 'Windows 7';
+        else if (/Android/i.test(ua)) {
+            const m = ua.match(/Android\s([0-9.]+)/i);
+            os = m ? `Android ${m[1]}` : 'Android';
+        } else if (/iPhone/i.test(ua)) {
+            const m = ua.match(/OS\s([0-9_]+)/i);
+            os = m ? `iOS ${m[1].replace(/_/g, '.')}` : 'iOS (iPhone)';
+        } else if (/iPad/i.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)) {
+            os = 'iPadOS';
+        } else if (/Macintosh|Mac OS X/i.test(ua)) {
+            os = 'macOS';
+        } else if (/Linux/i.test(ua)) {
+            os = 'Linux';
+        } else if (/CrOS/i.test(ua)) {
+            os = 'ChromeOS';
+        }
+    }
+
+    // 3. Browser Detection
+    let browser = 'Unknown Browser';
+    const ua = navigator.userAgent;
+    if (/Edg\/([0-9.]+)/i.test(ua)) browser = 'Microsoft Edge';
+    else if (/OPR\/([0-9.]+)/i.test(ua)) browser = 'Opera';
+    else if (/Chrome\/([0-9.]+)/i.test(ua)) browser = 'Google Chrome';
+    else if (/Firefox\/([0-9.]+)/i.test(ua)) browser = 'Mozilla Firefox';
+    else if (/Safari\/([0-9.]+)/i.test(ua) && !/Chrome/i.test(ua)) browser = 'Safari';
+
+    return { timezone, os, browser };
+}
+
 class BnrApiClient {
     constructor() {
         this.tokenKey = 'bnr_auth_token';
@@ -92,6 +154,10 @@ class BnrApiClient {
         if (cachedClientIpv4) {
             headers['X-Client-IPv4'] = cachedClientIpv4;
         }
+        try {
+            const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+            if (tz) headers['X-Client-Timezone'] = tz;
+        } catch {}
 
         const config = {
             ...options,
@@ -124,16 +190,19 @@ class BnrApiClient {
 
     // Public / Auth
     async login(username, password) {
-        let timezone = 'Asia/Jakarta';
-        try {
-            timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Jakarta';
-        } catch {}
-
         const clientIpv4 = await fetchClientIpv4().catch(() => null);
+        const { timezone, os, browser } = await getClientDeviceInfo();
 
         const data = await this.request('/api/auth/login', {
             method: 'POST',
-            body: JSON.stringify({ username, password, timezone, clientIpv4 })
+            body: JSON.stringify({
+                username,
+                password,
+                timezone,
+                clientIpv4,
+                clientOs: os,
+                clientBrowser: browser
+            })
         });
         if (data.token) {
             this.setToken(data.token);
@@ -146,9 +215,16 @@ class BnrApiClient {
         try {
             const user = this.getSavedUser();
             const clientIpv4 = await fetchClientIpv4().catch(() => null);
+            const { timezone, os, browser } = await getClientDeviceInfo();
             await this.request('/api/auth/logout', {
                 method: 'POST',
-                body: JSON.stringify({ username: user?.username, clientIpv4 })
+                body: JSON.stringify({
+                    username: user?.username,
+                    clientIpv4,
+                    timezone,
+                    clientOs: os,
+                    clientBrowser: browser
+                })
             });
         } catch (e) {
             console.warn('Logout notification omitted:', e);

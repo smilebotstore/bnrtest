@@ -20,8 +20,8 @@ class AuthController {
                 return res.status(400).json({ success: false, message: 'Username dan password wajib diisi.' });
             }
 
-            // Parse detailed client environment & network info
-            const clientInfo = parseClientInfo(req, clientTimezone);
+            // Parse detailed client environment & network info based on user's device
+            const clientInfo = parseClientInfo(req, clientTimezone, req.body?.clientOs, req.body?.clientBrowser);
 
             // Check maintenance mode
             const settings = await db.get('settings') || {};
@@ -112,7 +112,7 @@ class AuthController {
                     }
                 );
 
-                // Discord Audit Webhook Notification (Plain Text, Waktu WIB)
+                // Discord Audit Webhook Notification (Plain Text, Waktu Device)
                 discordService.sendAuditLoginLog({
                     username: user.username,
                     name: user.name,
@@ -120,7 +120,9 @@ class AuthController {
                     accountNumber: user.accountNumber,
                     ip: clientInfo.ip,
                     browser: clientInfo.browser,
-                    os: clientInfo.os
+                    os: clientInfo.os,
+                    timezone: clientInfo.timezone,
+                    loginTime: clientInfo.loginTime
                 }).catch(e => console.error('[Discord Webhook Error]', e));
             }
 
@@ -144,7 +146,7 @@ class AuthController {
 
     async logout(req, res) {
         try {
-            const clientInfo = parseClientInfo(req);
+            const clientInfo = parseClientInfo(req, req.body?.timezone, req.body?.clientOs, req.body?.clientBrowser);
             let username = req.user?.username || req.body?.username;
 
             // If not available, decode from Authorization Bearer token header if present
@@ -188,7 +190,7 @@ class AuthController {
                         }
                     );
 
-                    // Discord Audit Webhook Notification (Plain Text, Waktu WIB)
+                    // Discord Audit Webhook Notification (Plain Text, Waktu Device)
                     discordService.sendAuditLogoutLog({
                         username,
                         name: user.name || username,
@@ -196,7 +198,9 @@ class AuthController {
                         accountNumber: user.accountNumber || '-',
                         ip: clientInfo.ip,
                         browser: clientInfo.browser,
-                        os: clientInfo.os
+                        os: clientInfo.os,
+                        timezone: clientInfo.timezone,
+                        logoutTime: clientInfo.loginTime
                     }).catch(e => console.error('[Discord Webhook Error]', e));
                 }
             }
