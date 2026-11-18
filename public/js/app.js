@@ -25,12 +25,12 @@ window.BNR_CONFIG = {
     // 2. Judul (Title) di Setiap Halaman Tab Browser
     pageTitles: {
         login: "Masuk ke Layanan — BNR",
-        dashboard: "Beranda Nasabah — BNR",
+        dashboard: "Beranda — BNR",
         transfer: "Transfer Saldo — BNR",
         mutation: "Mutasi Rekening — BNR",
         qr: "Pembayaran QRIS — BNR",
         topup: "Pengajuan Top Up — BNR",
-        virtualCard: "Kartu Virtual Debit — BNR",
+        virtualCard: "Kartu Virtual — BNR",
         notifications: "Pusat Notifikasi — BNR",
         profile: "Profil Pengguna — BNR",
         admin: "Super Admin Portal — BNR"
