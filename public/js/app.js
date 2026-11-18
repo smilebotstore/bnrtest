@@ -66,8 +66,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
 function applyBrandingLogos() {
     const cfg = window.BNR_CONFIG || {};
-    const logoUrl = (cfg.branding && cfg.branding.logoUrl) || '/assets/images/bnr-logo.svg';
-    const fallbackLogo = (cfg.branding && cfg.branding.fallbackLogo) || '/assets/images/bnr-logo.svg';
+    const branding = cfg.branding || {};
+    const logoUrl = branding.logoUrl || '/assets/images/bnr-logo.svg';
+    const fallbackLogo = branding.fallbackLogo || '/assets/images/bnr-logo.svg';
+
+    // Apply favicon if defined in config.js
+    if (branding.faviconUrl) {
+        let faviconLink = document.querySelector("link[rel~='icon']");
+        if (faviconLink) {
+            faviconLink.href = branding.faviconUrl;
+        }
+    }
 
     document.querySelectorAll('.bnr-brand-logo, #splashLogo').forEach(img => {
         img.src = logoUrl;
@@ -167,6 +176,8 @@ function showAuthView() {
     if (window.location.pathname !== '/login') {
         window.history.pushState(null, '', '/login');
     }
+    const cfgTitles = (window.BNR_CONFIG && window.BNR_CONFIG.pageTitles) || {};
+    document.title = cfgTitles.login || 'Masuk ke Layanan — BNR';
     lucide.createIcons();
 }
 
@@ -300,6 +311,7 @@ function navigateTo(viewId, pushState = true) {
     }
 
     const titleEl = document.getElementById('pageTitle');
+    const cfgTitles = (window.BNR_CONFIG && window.BNR_CONFIG.pageTitles) || {};
     const titles = {
         dashboard: 'Beranda',
         transfer: 'Transfer Saldo',
@@ -312,7 +324,7 @@ function navigateTo(viewId, pushState = true) {
         admin: 'Admin Panel'
     };
     if (titleEl) titleEl.textContent = titles[viewId] || 'Beranda';
-    document.title = `${titles[viewId] || 'Beranda'} — BNR`;
+    document.title = cfgTitles[viewId] || `${titles[viewId] || 'Beranda'} — BNR`;
 
     // Render corresponding view
     switch (viewId) {
