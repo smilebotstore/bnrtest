@@ -688,12 +688,14 @@ async function loadDashboardRecentTransactions() {
 
         const recent5 = txList.slice(0, 5);
         container.innerHTML = recent5.map(tx => {
-            const isOutgoing = tx.role === 'DEBIT' || tx.type === 'FEE_CHANGE_NAME';
+            const isOutgoing = tx.role === 'DEBIT' || tx.direction === 'DEBIT' || tx.type === 'FEE_CHANGE_NAME' || tx.type === 'SERVICE_FEE' || tx.type === 'BBN_PURCHASE';
             const icon = isOutgoing ? 'arrow-up-right' : 'arrow-down-left';
-            const iconColor = isOutgoing ? 'text-rose-500 bg-rose-50' : 'text-emerald-500 bg-emerald-50';
-            const amountColor = isOutgoing ? 'text-rose-600' : 'text-emerald-600';
+            const iconColor = isOutgoing ? 'text-rose-500 bg-rose-50 dark:bg-rose-950/40' : 'text-emerald-500 bg-emerald-50 dark:bg-emerald-950/40';
+            const amountColor = isOutgoing ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-600 dark:text-emerald-400';
             const sign = isOutgoing ? '-' : '+';
-            const dateStr = new Date(tx.timestamp).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' });
+            const dateStr = new Date(Number(tx.timestamp) || tx.timestamp).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' });
+            const title = tx.note || tx.description || (isOutgoing ? 'Transfer Keluar' : 'Transfer Masuk');
+            const txCode = tx.id || tx.transactionId || tx.referenceId || '-';
 
             return `
                 <div class="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800/40 rounded-2xl border border-slate-100 dark:border-slate-800 text-xs">
@@ -702,13 +704,13 @@ async function loadDashboardRecentTransactions() {
                             <i data-lucide="${icon}" class="w-4 h-4"></i>
                         </div>
                         <div>
-                            <p class="font-bold text-slate-800 dark:text-white">${tx.note || (isOutgoing ? 'Transfer Keluar' : 'Transfer Masuk')}</p>
+                            <p class="font-bold text-slate-800 dark:text-white">${title}</p>
                             <span class="text-[10px] text-slate-400">${dateStr}</span>
                         </div>
                     </div>
                     <div class="text-right">
                         <p class="font-extrabold ${amountColor}">${sign}${formatCurrency(tx.amount)}</p>
-                        <span class="text-[10px] text-slate-400 font-mono">${tx.id}</span>
+                        <span class="text-[10px] text-slate-400 font-mono">${txCode}</span>
                     </div>
                 </div>
             `;
@@ -898,18 +900,29 @@ async function renderMutationView() {
         }
 
         container.innerHTML = txList.map(tx => {
-            const isOutgoing = tx.role === 'DEBIT' || tx.type === 'FEE_CHANGE_NAME';
-            const counterparty = isOutgoing ? `Ke: ${tx.receiverName || 'Pengeluaran'}` : `Dari: ${tx.senderName || 'Pemasukan'}`;
+            const isOutgoing = tx.role === 'DEBIT' || tx.direction === 'DEBIT' || tx.type === 'FEE_CHANGE_NAME' || tx.type === 'SERVICE_FEE' || tx.type === 'BBN_PURCHASE';
+            let counterparty = '';
+            if (tx.receiverName || tx.senderName) {
+                counterparty = isOutgoing ? `Ke: ${tx.receiverName || 'Pengeluaran'}` : `Dari: ${tx.senderName || 'Pemasukan'}`;
+            } else if (tx.platform) {
+                counterparty = `Platform: ${tx.platform}`;
+            } else {
+                counterparty = isOutgoing ? 'Pengeluaran' : 'Pemasukan';
+            }
+
+            const title = tx.note || tx.description || (isOutgoing ? 'Transfer Keluar' : 'Transfer Masuk');
+            const txCode = tx.id || tx.transactionId || tx.referenceId || '-';
+
             return `
                 <div class="p-4 bg-slate-50 dark:bg-slate-800/40 rounded-2xl border border-slate-100 dark:border-slate-800 flex justify-between items-center text-xs">
                     <div>
-                        <p class="font-bold text-slate-800 dark:text-white">${tx.note || (isOutgoing ? 'Transfer Keluar' : 'Transfer Masuk')}</p>
+                        <p class="font-bold text-slate-800 dark:text-white">${title}</p>
                         <p class="text-slate-400 text-[11px]">${counterparty}</p>
-                        <span class="text-[10px] text-slate-400 font-mono">${new Date(tx.timestamp).toLocaleString('id-ID')}</span>
+                        <span class="text-[10px] text-slate-400 font-mono">${new Date(Number(tx.timestamp) || tx.timestamp).toLocaleString('id-ID')}</span>
                     </div>
                     <div class="text-right">
-                        <p class="text-xs font-extrabold ${isOutgoing ? 'text-rose-600' : 'text-emerald-600'}">${isOutgoing ? '-' : '+'}${formatCurrency(tx.amount)}</p>
-                        <span class="text-[10px] text-slate-400 font-mono">${tx.id}</span>
+                        <p class="text-xs font-extrabold ${isOutgoing ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-600 dark:text-emerald-400'}">${isOutgoing ? '-' : '+'}${formatCurrency(tx.amount)}</p>
+                        <span class="text-[10px] text-slate-400 font-mono">${txCode}</span>
                     </div>
                 </div>
             `;

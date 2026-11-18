@@ -168,16 +168,79 @@ class TransactionController {
     // Get mutation / history
     async getHistory(req, res) {
         try {
-            const accNo = req.user.accountNumber;
-            const historyMap = await db.get(`accountTransactions/${accNo}`);
+            const accNo = String(req.user.accountNumber || '').trim();
+            const username = String(req.user.username || '').trim().toLowerCase();
 
-            if (!historyMap) {
-                return res.json({ success: true, transactions: [] });
+            const [accountTxMap, globalTxMap] = await Promise.all([
+                db.get(`accountTransactions/${accNo}`).catch(() => ({})),
+                db.get('transactions').catch(() => ({}))
+            ]);
+
+            const txSet = new Map();
+
+            // 1. Ingest account-specific transactions (V2 indexed format)
+            if (accountTxMap && typeof accountTxMap === 'object') {
+                Object.entries(accountTxMap).forEach(([k, tx]) => {
+                    if (!tx) return;
+                    const id = tx.id || tx.transactionId || tx.referenceId || k;
+                    const role = tx.role || tx.direction || (tx.type === 'FEE_CHANGE_NAME' ? 'DEBIT' : 'CREDIT');
+                    txSet.set(id, {
+                        ...tx,
+                        id,
+                        role,
+                        note: tx.note || tx.description || (role === 'DEBIT' ? 'Transfer Keluar' : 'Transfer Masuk')
+                    });
+                });
             }
 
-            const transactions = Object.values(historyMap);
+            // 2. Ingest global transactions (V1 format & platform activities from database)
+            if (globalTxMap && typeof globalTxMap === 'object') {
+                Object.entries(globalTxMap).forEach(([k, tx]) => {
+                    if (!tx) return;
+                    const id = tx.id || tx.transactionId || tx.referenceId || k;
+                    if (txSet.has(id)) return; // Already present from account-specific list
+
+                    const sAcc = String(tx.senderAccount || tx.accountNumber || '').trim();
+                    const rAcc = String(tx.receiverAccount || '').trim();
+                    const sUser = String(tx.senderUsername || '').trim().toLowerCase();
+                    const rUser = String(tx.receiverUsername || '').trim().toLowerCase();
+
+                    const isSender = (sAcc && sAcc === accNo) || (username && sUser === username);
+                    const isReceiver = (rAcc && rAcc === accNo) || (username && rUser === username);
+
+                    if (isSender || isReceiver) {
+                        let role = tx.role || tx.direction;
+                        if (!role) {
+                            if (isSender) {
+                                role = 'DEBIT';
+                            } else if (isReceiver) {
+                                role = 'CREDIT';
+                            }
+                        }
+
+                        if (!role) {
+                            if (tx.type === 'SERVICE_FEE' || tx.type === 'FEE_CHANGE_NAME' || tx.type === 'BBN_PURCHASE') {
+                                role = 'DEBIT';
+                            } else {
+                                role = 'CREDIT';
+                            }
+                        }
+
+                        const note = tx.note || tx.description || (role === 'DEBIT' ? 'Transfer Keluar' : 'Transfer Masuk');
+
+                        txSet.set(id, {
+                            ...tx,
+                            id,
+                            role,
+                            note
+                        });
+                    }
+                });
+            }
+
+            const transactions = Array.from(txSet.values());
             // Sort newest first
-            transactions.sort((a, b) => b.timestamp - a.timestamp);
+            transactions.sort((a, b) => Number(b.timestamp || 0) - Number(a.timestamp || 0));
 
             return res.json({
                 success: true,

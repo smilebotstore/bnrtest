@@ -316,6 +316,7 @@ class AdminController {
                 role: 'CREDIT'
             };
             await db.set(`accountTransactions/${request.accountNumber}/${txId}`, txRecord);
+            await db.set(`transactions/${txId}`, txRecord);
 
             // Audit & Notification
             await db.logAudit(
